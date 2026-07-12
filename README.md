@@ -62,6 +62,26 @@ the repo. After that, every star tap writes an updated `ratings.json` to the rep
 `rating` is the latest score; `history` keeps every rating so the planner can see
 trends and how often a meal came up.
 
+## iPhone widget (Scriptable)
+iOS won't let a web app place a home-screen widget, but the free
+[Scriptable](https://apps.apple.com/app/scriptable/id1405459188) app can — and it
+reads the same live `meals.json`, so the widget always matches the plan.
+
+`widget/MealPlanWidget.js` is the script. To install:
+1. Open **Scriptable** → **＋** (new script) → paste in the contents of
+   `widget/MealPlanWidget.js` → name it **Meal Plan** → Done.
+2. Long-press the home screen → **＋** → search **Scriptable** → pick a size → **Add**.
+3. Long-press the new widget → **Edit Widget** → set **Script: Meal Plan**
+   (leave *When Interacting* as *Run Script* or *Open URL*).
+
+It shows today's **dinner** (plus **lunch** on medium/large), the star rating if
+you've rated it, and on the large size a few ingredients. Works on the lock screen
+too (rectangular / inline / circular). Tapping it opens the web app. It refreshes
+itself after midnight and caches the last fetch so it still shows offline.
+
+Note: skips/moves you make inside the app live only on that device, so the widget
+shows the base plan for the day.
+
 ## Updating the plan each month
 Replace `meals.json` with the new month's data (same shape), then **bump `VERSION`
 in `sw.js`** (e.g. `meal-v1` → `meal-v2`) so devices pick up the new files instead of
