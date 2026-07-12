@@ -1,0 +1,52 @@
+{
+  "updated": "2026-07-12T23:51:56.696Z",
+  "plan": "July Meal Plan",
+  "cells": {
+    "2026-07-12|dinner": {
+      "meal": {
+        "title": "Baked lemon-garlic tilapia, rice, roasted zucchini",
+        "ingredients": [
+          "Tilapia fillets",
+          "Butter",
+          "Garlic, minced",
+          "Lemon slices",
+          "Salt",
+          "Pepper",
+          "Zucchini",
+          "Oil",
+          "Rice"
+        ],
+        "steps": [
+          "Lay fillets in a baking dish, top with butter, minced garlic, lemon slices, salt, and pepper.",
+          "Bake at 400°F for 12–15 minutes.",
+          "Roast zucchini rounds alongside (oil, salt, 15 minutes).",
+          "Serve with rice."
+        ]
+      },
+      "movedFrom": "2026-07-16"
+    },
+    "2026-07-16|dinner": {
+      "meal": {
+        "title": "Steak night — baked potatoes, Caesar salad",
+        "ingredients": [
+          "Steaks",
+          "Salt",
+          "Butter",
+          "Garlic",
+          "Potatoes",
+          "Romaine",
+          "Caesar dressing",
+          "Croutons",
+          "Parmesan"
+        ],
+        "steps": [
+          "Salt the steaks 40 minutes ahead.",
+          "Sear in screaming-hot cast iron 3–4 minutes per side with butter and garlic; rest 10 minutes.",
+          "Bake potatoes at 400°F for 60 minutes.",
+          "Caesar: romaine, dressing, croutons, parmesan."
+        ]
+      },
+      "movedFrom": "2026-07-12"
+    }
+  }
+}
