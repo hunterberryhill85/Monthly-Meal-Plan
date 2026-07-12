@@ -43,6 +43,158 @@ function ghReady() {
   return !!(g.owner && g.repo && g.token);
 }
 
+/* ---------- schedule overrides (skip / move) ----------
+   Stored per plan so they auto-clear when next month's meals.json loads.
+   cells[`${date}|${slot}`] = { skip:true } | { meal:<mealObj>, movedFrom:<date> } */
+const LS_OVERRIDES = "mealOverrides";
+function getOverrides() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LS_OVERRIDES));
+    if (o && o.cells && o.plan === (PLAN ? PLAN.title : null)) return o;
+  } catch {}
+  return { plan: PLAN ? PLAN.title : null, cells: {} };
+}
+function saveOverrides(o) {
+  o.plan = PLAN ? PLAN.title : null;
+  localStorage.setItem(LS_OVERRIDES, JSON.stringify(o));
+}
+function cellKey(date, slot) { return `${date}|${slot}`; }
+function hasChanges() { return Object.keys(getOverrides().cells).length > 0; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function shortDay(dateStr) {
+  const d = parseDate(dateStr);
+  return `${DOW[d.getDay()].slice(0, 3)} ${MON[d.getMonth()]} ${d.getDate()}`;
+}
+
+// Effective meal for a day+slot, honoring overrides (may be flagged skipped).
+function resolveMeal(dayIndex, slot) {
+  const day = PLAN.days[dayIndex];
+  const base = day[slot];
+  const ov = getOverrides().cells[cellKey(day.date, slot)];
+  if (ov) {
+    if (ov.skip) return { title: base.title, skipped: true };
+    if (ov.meal) return Object.assign({}, ov.meal, { movedFrom: ov.movedFrom });
+  }
+  return base;
+}
+// The real meal object for scheduling (ignores a skip flag — used when moving).
+function mealObjFor(dayIndex, slot) {
+  const day = PLAN.days[dayIndex];
+  const ov = getOverrides().cells[cellKey(day.date, slot)];
+  if (ov && ov.meal) return ov.meal;
+  return day[slot];
+}
+function stripStatus(m) {
+  const c = Object.assign({}, m);
+  delete c.skipped; delete c.movedFrom;
+  return c;
+}
+function skipMeal(dayIndex, slot) {
+  const o = getOverrides();
+  o.cells[cellKey(PLAN.days[dayIndex].date, slot)] = { skip: true };
+  saveOverrides(o);
+}
+function swapMeals(aIndex, bIndex, slot) {
+  const o = getOverrides();
+  const a = PLAN.days[aIndex], b = PLAN.days[bIndex];
+  const mealA = stripStatus(mealObjFor(aIndex, slot));
+  const mealB = stripStatus(mealObjFor(bIndex, slot));
+  o.cells[cellKey(a.date, slot)] = { meal: mealB, movedFrom: b.date };
+  o.cells[cellKey(b.date, slot)] = { meal: mealA, movedFrom: a.date };
+  saveOverrides(o);
+}
+function resetCell(dayIndex, slot) {
+  const o = getOverrides();
+  const day = PLAN.days[dayIndex];
+  const key = cellKey(day.date, slot);
+  const ov = o.cells[key];
+  delete o.cells[key];
+  // undo the other half of a fresh swap
+  if (ov && ov.movedFrom) {
+    const pk = cellKey(ov.movedFrom, slot);
+    const p = o.cells[pk];
+    if (p && p.movedFrom === day.date) delete o.cells[pk];
+  }
+  saveOverrides(o);
+}
+function resetAllSchedule() { saveOverrides({ plan: PLAN ? PLAN.title : null, cells: {} }); }
+
+/* ---------- bottom sheet + toast ---------- */
+function closeSheet() {
+  const s = document.getElementById("sheet-overlay");
+  if (s) s.remove();
+}
+function openSheet(title, innerHTML) {
+  closeSheet();
+  const wrap = document.createElement("div");
+  wrap.id = "sheet-overlay";
+  wrap.className = "sheet-overlay";
+  wrap.innerHTML = `<div class="sheet"><div class="sheet-grip"></div><div class="sheet-title">${esc(title)}</div>${innerHTML}</div>`;
+  wrap.addEventListener("click", (e) => { if (e.target === wrap) closeSheet(); });
+  document.body.appendChild(wrap);
+  return wrap;
+}
+function toast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg;
+  requestAnimationFrame(() => t.classList.add("show"));
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+function afterScheduleChange() { view = "day"; render(); }
+
+function openMealActions(dayIndex, slot) {
+  const day = PLAN.days[dayIndex];
+  const ov = getOverrides().cells[cellKey(day.date, slot)];
+  let btns = `<button class="sheet-btn" data-act="move">📅  Move to another day</button>`;
+  if (ov && ov.skip) {
+    btns += `<button class="sheet-btn" data-act="restore">↩︎  Restore to plan</button>`;
+  } else {
+    btns += `<button class="sheet-btn danger" data-act="skip">🚫  Skip completely</button>`;
+    if (ov) btns += `<button class="sheet-btn" data-act="restore">↩︎  Reset to plan</button>`;
+  }
+  btns += `<button class="sheet-btn cancel" data-act="cancel">Cancel</button>`;
+  const w = openSheet(`Skip or move ${slot}`, `<div class="sheet-list">${btns}</div>`);
+  w.querySelectorAll(".sheet-btn").forEach((b) => {
+    b.onclick = () => {
+      switch (b.dataset.act) {
+        case "cancel": return closeSheet();
+        case "move": return openMovePicker(dayIndex, slot);
+        case "skip":
+          skipMeal(dayIndex, slot); closeSheet();
+          toast(`${cap(slot)} skipped`); afterScheduleChange(); break;
+        case "restore":
+          resetCell(dayIndex, slot); closeSheet();
+          toast("Restored to plan"); afterScheduleChange(); break;
+      }
+    };
+  });
+}
+function openMovePicker(dayIndex, slot) {
+  let rows = "";
+  PLAN.days.forEach((d, i) => {
+    if (i === dayIndex) return;
+    const m = resolveMeal(i, slot);
+    rows += `<button class="day-row" data-i="${i}">
+        <span class="day-row-dow">${shortDay(d.date)}</span>
+        <span class="day-row-meal">${m.skipped ? "— skipped —" : esc(m.title)}</span>
+      </button>`;
+  });
+  const w = openSheet(`Move ${slot} to which day?`,
+    `<div class="sheet-sub">The two ${slot}s swap places, so no night is left empty.</div><div class="day-picker">${rows}</div>`);
+  w.querySelectorAll(".day-row").forEach((b) => {
+    b.onclick = () => {
+      const target = Number(b.dataset.i);
+      swapMeals(dayIndex, target, slot);
+      closeSheet();
+      toast(`Moved to ${DOW[parseDate(PLAN.days[target].date).getDay()]}`);
+      afterScheduleChange();
+    };
+  });
+}
+
 /* ---------- rating store ---------- */
 function ratingFor(title) {
   const r = getRatings();
@@ -155,13 +307,26 @@ function renderDay() {
   const dateSub = `${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
 
   const card = (slot) => {
-    const meal = day[slot];
+    const meal = resolveMeal(dayIndex, slot);
+    const label = slot === "dinner" ? "Dinner" : "Lunch";
+    if (meal.skipped) {
+      return `
+        <div class="meal-card skipped" data-slot="${slot}">
+          <div class="meal-label ${slot}">${label}</div>
+          <div class="meal-name struck">${esc(meal.title)}</div>
+          <div class="meal-foot">
+            <span class="skip-badge">Skipped</span>
+            <span class="chev">›</span>
+          </div>
+        </div>`;
+    }
+    const movedBadge = meal.movedFrom ? `<span class="moved-badge">↺ from ${shortDay(meal.movedFrom)}</span>` : "";
     return `
       <div class="meal-card" data-slot="${slot}">
-        <div class="meal-label ${slot}">${slot === "dinner" ? "Dinner" : "Lunch"}</div>
+        <div class="meal-label ${slot}">${label}</div>
         <div class="meal-name">${esc(meal.title)}</div>
         <div class="meal-foot">
-          ${starsMini(meal.title)}
+          <span class="foot-left">${starsMini(meal.title)}${movedBadge}</span>
           <span class="chev">›</span>
         </div>
       </div>`;
@@ -195,10 +360,10 @@ function renderDay() {
 function renderDetail() {
   const day = PLAN.days[detailCtx.dayIndex];
   const slot = detailCtx.slot;
-  const meal = day[slot];
+  const meal = resolveMeal(detailCtx.dayIndex, slot);
   const d = parseDate(day.date);
   const dateLine = `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}`;
-  const hasRecipe = meal.ingredients && meal.ingredients.length;
+  const hasRecipe = !meal.skipped && meal.ingredients && meal.ingredients.length;
 
   let body = "";
   if (hasRecipe) {
@@ -217,6 +382,8 @@ function renderDetail() {
       body += `<div class="step"><span class="num">${i + 1}</span><span>${linkified}</span></div>`;
     });
     body += `</div>`;
+  } else if (meal.skipped) {
+    body += `<div class="note-box skipped-note">This ${slot} is skipped for ${DOW[d.getDay()]}. Use “Skip or move” above to restore it, or to move another day's meal here.</div>`;
   } else {
     body += `<div class="note-box">${esc(meal.note || meal.title)}</div>`;
   }
@@ -233,16 +400,24 @@ function renderDetail() {
     <div class="detail-kicker ${slot === "dinner" ? "" : ""}" style="color:var(--${slot})">${slot === "dinner" ? "Dinner" : "Lunch"}</div>
     <div class="detail-title">${esc(meal.title)}</div>
     <div class="detail-date">${dateLine}</div>
+    <div class="detail-actions">
+      <button class="action-chip" id="skipMoveBtn">⤴ Skip or move</button>
+      ${meal.movedFrom ? `<span class="status-chip moved">↺ Moved from ${shortDay(meal.movedFrom)}</span>` : ""}
+      ${meal.skipped ? `<span class="status-chip skip">Skipped</span>` : ""}
+    </div>
     ${body}
+    ${meal.skipped ? "" : `
     <div class="rate-block">
       <div class="rate-prompt">${current ? "Your rating" : "How was it? Tap to rate"}</div>
       <div class="stars" id="stars">${starRow}</div>
-      <div class="rate-status ${ghReady() ? "" : ""}" id="rateStatus">${current ? "" : ""}</div>
-    </div>
+      <div class="rate-status" id="rateStatus"></div>
+    </div>`}
   `;
 
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
   document.getElementById("backBtn").onclick = () => { view = "day"; render(); };
+  const smBtn = document.getElementById("skipMoveBtn");
+  if (smBtn) smBtn.onclick = () => openMealActions(detailCtx.dayIndex, slot);
 
   const statusEl = document.getElementById("rateStatus");
   app.querySelectorAll(".star-btn").forEach((btn) => {
@@ -302,6 +477,7 @@ function renderSettings() {
       <button class="btn-primary" id="saveGh">Save</button>
       <button class="btn-ghost" id="testGh">Save & test sync now</button>
       <button class="btn-ghost" id="exportBtn">Export ratings.json (manual backup)</button>
+      ${hasChanges() ? `<button class="btn-ghost danger-ghost" id="resetSched">Reset all skips &amp; moves to plan</button>` : ""}
       <div class="status-line" id="ghStatus"></div>
     </div>
   `;
@@ -333,6 +509,13 @@ function renderSettings() {
     statusEl.textContent = "Testing…";
     statusEl.className = "status-line";
     await realTest(statusEl);
+  };
+  const resetSchedBtn = document.getElementById("resetSched");
+  if (resetSchedBtn) resetSchedBtn.onclick = () => {
+    resetAllSchedule();
+    statusEl.textContent = "All skips & moves cleared.";
+    statusEl.className = "status-line ok";
+    resetSchedBtn.remove();
   };
   document.getElementById("exportBtn").onclick = () => {
     const payload = {

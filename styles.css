@@ -285,3 +285,108 @@ html, body {
 .sync-dot.on { background: #2e8b57; }
 .explain { font-size: 14px; color: var(--text-dim); line-height: 1.5; margin-bottom: 20px; }
 .explain code { background: var(--surface-2); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+.danger-ghost { color: #c0392b; }
+
+/* ---------- skip / move states ---------- */
+.foot-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.meal-card.skipped { opacity: 0.72; }
+.meal-name.struck { text-decoration: line-through; text-decoration-color: var(--text-dim); color: var(--text-dim); }
+.skip-badge {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px;
+  color: var(--text-dim); background: var(--surface-2);
+  padding: 4px 10px; border-radius: 999px;
+}
+.moved-badge {
+  font-size: 12px; font-weight: 700;
+  color: var(--lunch); background: var(--accent-soft);
+  padding: 3px 9px; border-radius: 999px;
+}
+
+.detail-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.action-chip {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--accent);
+  font-size: 14px; font-weight: 700;
+  padding: 9px 15px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.action-chip:active { transform: scale(0.96); }
+.status-chip {
+  font-size: 12px; font-weight: 700;
+  padding: 6px 11px; border-radius: 999px;
+}
+.status-chip.moved { color: var(--lunch); background: var(--accent-soft); }
+.status-chip.skip { color: var(--text-dim); background: var(--surface-2); }
+.skipped-note { color: var(--text-dim); }
+
+/* ---------- bottom sheet ---------- */
+.sheet-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(20, 12, 8, 0.5);
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fade 0.15s ease;
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.sheet {
+  width: 100%; max-width: 720px;
+  background: var(--bg);
+  border-radius: 22px 22px 0 0;
+  padding: 10px 18px calc(var(--safe-bottom) + 22px);
+  box-shadow: 0 -8px 30px rgba(0,0,0,0.25);
+  animation: slideup 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  max-height: 82vh; overflow-y: auto;
+}
+@keyframes slideup { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.sheet-grip {
+  width: 40px; height: 5px; border-radius: 3px;
+  background: var(--line);
+  margin: 4px auto 14px;
+}
+.sheet-title { font-size: 19px; font-weight: 800; text-align: center; margin-bottom: 6px; text-transform: capitalize; }
+.sheet-sub { font-size: 13px; color: var(--text-dim); text-align: center; margin-bottom: 16px; line-height: 1.4; }
+.sheet-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.sheet-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 17px; font-weight: 600;
+  padding: 16px;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: center;
+}
+.sheet-btn:active { transform: scale(0.98); }
+.sheet-btn.danger { color: #c0392b; }
+.sheet-btn.cancel { background: none; color: var(--text-dim); border-color: transparent; font-weight: 500; }
+
+.day-picker { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.day-row {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 13px;
+  padding: 13px 16px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.day-row:active { transform: scale(0.99); background: var(--surface-2); }
+.day-row-dow { font-size: 13px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
+.day-row-meal { font-size: 16px; color: var(--text); }
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 28px);
+  transform: translate(-50%, 20px);
+  z-index: 60;
+  background: var(--text); color: var(--bg);
+  font-size: 15px; font-weight: 600;
+  padding: 12px 20px; border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  max-width: 90vw; text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
