@@ -1,5 +1,5 @@
 {
-  "updated": "2026-07-12T17:32:27.460Z",
+  "updated": "2026-07-12T17:32:29.598Z",
   "plan": "July Meal Plan",
   "ratings": {
     "Build-your-own bagel pizzas (movie night)": {
@@ -75,7 +75,7 @@
     "Backyard cookout — burgers, hot dogs, grilled chicken sausage": {
       "title": "Backyard cookout — burgers, hot dogs, grilled chicken sausage",
       "type": "dinner",
-      "count": 2,
+      "count": 3,
       "history": [
         {
           "date": "2026-07-11",
@@ -86,10 +86,15 @@
           "date": "2026-07-11",
           "rating": 4,
           "at": "2026-07-12T17:32:26.857Z"
+        },
+        {
+          "date": "2026-07-11",
+          "rating": 5,
+          "at": "2026-07-12T17:32:28.996Z"
         }
       ],
-      "rating": 4,
-      "at": "2026-07-12T17:32:26.857Z"
+      "rating": 5,
+      "at": "2026-07-12T17:32:28.996Z"
     }
   }
 }
