@@ -10,6 +10,7 @@ generator can use them to build the next plan.
 - `index.html`, `styles.css`, `app.js` — the app
 - `meals.json` — the plan data (days → dinner/lunch, with ingredients + steps)
 - `ratings.json` — written by the app once GitHub sync is on (this is the file to point the meal planner at)
+- `overrides.json` — written by the app when you skip/move meals (so the widget shows the effective plan)
 - `manifest.webmanifest`, `sw.js`, `icons/` — PWA install + offline
 
 ## Run locally (on your Mac, to test)
@@ -79,8 +80,11 @@ you've rated it, and on the large size a few ingredients. Works on the lock scre
 too (rectangular / inline / circular). Tapping it opens the web app. It refreshes
 itself after midnight and caches the last fetch so it still shows offline.
 
-Note: skips/moves you make inside the app live only on that device, so the widget
-shows the base plan for the day.
+Skips/moves you make in the app are synced up to `overrides.json` (whenever GitHub
+sync is on) and the widget applies them, so it shows the *effective* meal for today
+— including "Skipped tonight" and "moved from …". Note iOS refreshes widgets on its
+own schedule, so a change can take a few minutes (or force it by removing and
+re-adding the widget).
 
 ## Updating the plan each month
 Replace `meals.json` with the new month's data (same shape), then **bump `VERSION`

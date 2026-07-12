@@ -80,6 +80,7 @@ function getOverrides() {
 function saveOverrides(o) {
   o.plan = PLAN ? PLAN.title : null;
   localStorage.setItem(LS_OVERRIDES, JSON.stringify(o));
+  schedulePushOverrides(); // mirror skips/moves up to the repo so the widget can see them
 }
 function cellKey(date, slot) { return `${date}|${slot}`; }
 function hasChanges() { return Object.keys(getOverrides().cells).length > 0; }
@@ -373,6 +374,52 @@ async function pushRatings(statusEl, attempt = 0) {
   } catch (e) {
     setStatus("Saved on this device (GitHub sync failed: " + e.message + ")", "err");
   }
+}
+
+/* Sync schedule overrides (skips/moves) to overrides.json so the widget and the
+   meal planner see the effective schedule. Silent + debounced; local save always
+   wins even if this fails (offline, no token). */
+let overridesPushTimer = null;
+function schedulePushOverrides() {
+  if (!ghReady()) return;
+  clearTimeout(overridesPushTimer);
+  overridesPushTimer = setTimeout(() => pushOverrides(), 700);
+}
+async function pushOverrides(attempt = 0) {
+  if (!ghReady()) return;
+  const g = getGH();
+  const branch = g.branch || "main";
+  const api = `https://api.github.com/repos/${g.owner}/${g.repo}/contents/overrides.json`;
+  const headers = {
+    "Authorization": `Bearer ${g.token}`,
+    "Accept": "application/vnd.github+json",
+    "Content-Type": "application/json",
+  };
+  const o = getOverrides();
+  const payload = {
+    updated: new Date().toISOString(),
+    plan: PLAN ? PLAN.title : null,
+    cells: o.cells,
+  };
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2))));
+  try {
+    let sha;
+    const getRes = await fetch(`${api}?ref=${encodeURIComponent(branch)}`, { headers });
+    if (getRes.ok) sha = (await getRes.json()).sha;
+    else if (getRes.status !== 404) throw new Error(`read ${getRes.status}`);
+    const putRes = await fetch(api, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({
+        message: `Update schedule overrides (${new Date().toLocaleString()})`,
+        content,
+        branch,
+        ...(sha ? { sha } : {}),
+      }),
+    });
+    if (putRes.status === 409 && attempt < 2) return pushOverrides(attempt + 1);
+    // Any other failure is non-fatal: the schedule is already saved on the device.
+  } catch (e) { /* offline or not configured — ignore */ }
 }
 
 /* ---------- views ---------- */
@@ -861,6 +908,8 @@ fetch("./meals.json")
     if (anchor > planLastSunday()) anchor = planLastSunday();
     weekAnchor = anchor;
     render();
+    // Push any skips/moves already saved on this device so the widget reflects them.
+    if (hasChanges()) schedulePushOverrides();
   })
   .catch((e) => {
     app.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim)">Couldn't load meals.json<br><small>${esc(e.message)}</small></div>`;

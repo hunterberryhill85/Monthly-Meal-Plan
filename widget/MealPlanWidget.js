@@ -1,7 +1,8 @@
 // Meal Plan — Scriptable home/lock-screen widget for iPhone/iPad.
-// Shows today's dinner (and lunch) pulled live from your GitHub Pages meals.json,
-// with the star rating if you've rated it. Works on all widget sizes and on the
-// lock screen. Caches the last good fetch so it still shows something offline.
+// Shows today's *effective* dinner (and lunch) pulled live from your GitHub Pages
+// meals.json, honoring skips/moves you made in the app (via overrides.json) and
+// showing the star rating from ratings.json. Caches the last good fetch so it
+// still shows something offline.
 //
 // Setup: paste this whole file into a new script in the Scriptable app, then add a
 // Scriptable widget to your home/lock screen and choose this script. See the repo
@@ -11,6 +12,7 @@
 const PAGES = "https://hunterberryhill85.github.io/Monthly-Meal-Plan/";
 const MEALS_URL = PAGES + "meals.json";
 const RATINGS_URL = PAGES + "ratings.json";
+const OVERRIDES_URL = PAGES + "overrides.json";
 const OPEN_URL = PAGES; // tapping the widget opens the web app
 
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -25,12 +27,12 @@ const C = {
   lunch: Color.dynamic(new Color("#c68a1c"), new Color("#e3b452")),
   accent: Color.dynamic(new Color("#3f7d54"), new Color("#7bb98a")),
   star: Color.dynamic(new Color("#e3a531"), new Color("#f0c04a")),
-  starOff: Color.dynamic(new Color("#d2d5c2"), new Color("#464e34")),
 };
 
-// Module-level state, filled in by main() and read by the builders.
+// Module-level state, filled by main() and read by the builders.
 let plan = null;
 let ratings = null;
+let overrides = null;
 let today = "";
 let family = null;
 
@@ -44,13 +46,18 @@ function parseDate(s) {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
+function shortDay(dateStr) {
+  const d = parseDate(dateStr);
+  return `${DOW[d.getDay()].slice(0, 3)} ${MON[d.getMonth()]} ${d.getDate()}`;
+}
 
-// Fetch JSON, caching the last good copy to disk for offline use.
+// Fetch JSON with a cache-buster (dodges CDN staleness), caching the last good
+// copy to disk for offline use.
 async function loadJSON(url, cacheName) {
   const fm = FileManager.local();
   const path = fm.joinPath(fm.cacheDirectory(), cacheName);
   try {
-    const req = new Request(url);
+    const req = new Request(url + "?v=" + Date.now());
     req.timeoutInterval = 12;
     const data = await req.loadJSON();
     fm.writeString(path, JSON.stringify(data));
@@ -65,13 +72,26 @@ function ratingFor(rt, title) {
   if (!rt || !rt.ratings || !rt.ratings[title]) return 0;
   return rt.ratings[title].rating || 0;
 }
-
-// Star string for a rating (1–5), or null if unrated.
 function starText(v) {
   if (!v) return null;
   let s = "";
   for (let i = 1; i <= 5; i++) s += i <= v ? "★" : "☆";
   return s;
+}
+
+// Only apply overrides that belong to the currently-published plan.
+function overrideCells() {
+  if (overrides && overrides.cells && overrides.plan === plan.title) return overrides.cells;
+  return {};
+}
+// Effective meal for a date+slot, honoring a skip or a move (same logic as the app).
+function resolveMeal(date, slot, base) {
+  const c = overrideCells()[`${date}|${slot}`];
+  if (c) {
+    if (c.skip) return { title: base.title, skipped: true };
+    if (c.meal) return Object.assign({}, c.meal, { movedFrom: c.movedFrom });
+  }
+  return base;
 }
 
 // ---------- entry point ----------
@@ -83,22 +103,27 @@ async function main() {
     return;
   }
   try { ratings = await loadJSON(RATINGS_URL, "mealplan_ratings.json"); } catch (e) { ratings = null; }
+  try { overrides = await loadJSON(OVERRIDES_URL, "mealplan_overrides.json"); } catch (e) { overrides = null; }
 
   today = todayStr();
   family = config.widgetFamily; // null when run inside the app
+
   const day = plan.days.find((d) => d.date === today);
+  const info = day
+    ? { dinner: resolveMeal(today, "dinner", day.dinner), lunch: resolveMeal(today, "lunch", day.lunch) }
+    : null;
 
   let widget;
-  if (family === "accessoryInline") widget = buildInline(day);
-  else if (family === "accessoryCircular") widget = buildCircular(day);
-  else if (family === "accessoryRectangular") widget = buildRectangular(day);
-  else widget = buildStandard(day, family || "medium");
+  if (family === "accessoryInline") widget = buildInline(info);
+  else if (family === "accessoryCircular") widget = buildCircular(info);
+  else if (family === "accessoryRectangular") widget = buildRectangular(info);
+  else widget = buildStandard(info, family || "medium");
 
   present(widget);
 }
 
-// Wire up tap target + refresh, then either install the widget or preview it.
-// Nothing is returned to the top level, so there is no "shortcut output".
+// Wire up tap target + refresh, then install or preview. Nothing is returned to
+// the top level, so there is no "shortcut output".
 function present(w) {
   w.url = OPEN_URL;
   const mid = new Date();
@@ -130,7 +155,7 @@ function errorWidget() {
 }
 
 // ---------- home-screen sizes: small / medium / large ----------
-function buildStandard(day, size) {
+function buildStandard(info, size) {
   const w = new ListWidget();
   w.backgroundColor = C.bg;
   const p = size === "small" ? 14 : 16;
@@ -141,7 +166,7 @@ function buildStandard(day, size) {
   head.textColor = C.accent;
   head.font = Font.heavySystemFont(size === "small" ? 10 : 11);
 
-  if (!day) {
+  if (!info) {
     w.addSpacer(6);
     const none = w.addText("No meal planned for today.");
     none.textColor = C.text; none.font = Font.semiboldSystemFont(size === "small" ? 15 : 18);
@@ -151,31 +176,42 @@ function buildStandard(day, size) {
     return w;
   }
 
+  const dinner = info.dinner;
   w.addSpacer(size === "small" ? 8 : 10);
 
   const dinLabel = w.addText("DINNER");
   dinLabel.textColor = C.dinner; dinLabel.font = Font.heavySystemFont(9);
   w.addSpacer(3);
-  const dinTitle = w.addText(day.dinner.title);
-  dinTitle.textColor = C.text;
+  const dinTitle = w.addText(dinner.title);
+  dinTitle.textColor = dinner.skipped ? C.dim : C.text;
   dinTitle.font = Font.boldSystemFont(size === "small" ? 15 : size === "large" ? 22 : 18);
   dinTitle.lineLimit = 3;
   dinTitle.minimumScaleFactor = 0.8;
 
-  const stars = starText(ratingFor(ratings, day.dinner.title));
-  if (stars) {
-    w.addSpacer(5);
-    const st = w.addText(stars);
-    st.textColor = C.star; st.font = Font.systemFont(size === "small" ? 12 : 14);
-  }
-
-  if (size === "large" && day.dinner.ingredients && day.dinner.ingredients.length) {
-    w.addSpacer(10);
-    const ingHead = w.addText("INGREDIENTS");
-    ingHead.textColor = C.dim; ingHead.font = Font.heavySystemFont(9);
+  if (dinner.skipped) {
     w.addSpacer(4);
-    const ing = w.addText(day.dinner.ingredients.slice(0, 7).join("  ·  "));
-    ing.textColor = C.dim; ing.font = Font.systemFont(12); ing.lineLimit = 4;
+    const sk = w.addText("Skipped tonight");
+    sk.textColor = C.dinner; sk.font = Font.semiboldSystemFont(size === "small" ? 11 : 12);
+  } else {
+    if (dinner.movedFrom) {
+      w.addSpacer(3);
+      const mv = w.addText("↺ moved from " + shortDay(dinner.movedFrom));
+      mv.textColor = C.lunch; mv.font = Font.mediumSystemFont(size === "small" ? 10 : 11);
+    }
+    const stars = starText(ratingFor(ratings, dinner.title));
+    if (stars) {
+      w.addSpacer(5);
+      const st = w.addText(stars);
+      st.textColor = C.star; st.font = Font.systemFont(size === "small" ? 12 : 14);
+    }
+    if (size === "large" && dinner.ingredients && dinner.ingredients.length) {
+      w.addSpacer(10);
+      const ingHead = w.addText("INGREDIENTS");
+      ingHead.textColor = C.dim; ingHead.font = Font.heavySystemFont(9);
+      w.addSpacer(4);
+      const ing = w.addText(dinner.ingredients.slice(0, 7).join("  ·  "));
+      ing.textColor = C.dim; ing.font = Font.systemFont(12); ing.lineLimit = 4;
+    }
   }
 
   if (size !== "small") {
@@ -183,7 +219,7 @@ function buildStandard(day, size) {
     const lunLabel = w.addText("LUNCH");
     lunLabel.textColor = C.lunch; lunLabel.font = Font.heavySystemFont(9);
     w.addSpacer(3);
-    const lunTitle = w.addText(day.lunch.title);
+    const lunTitle = w.addText(info.lunch.skipped ? info.lunch.title + "  (skipped)" : info.lunch.title);
     lunTitle.textColor = C.dim; lunTitle.font = Font.systemFont(13);
     lunTitle.lineLimit = 2; lunTitle.minimumScaleFactor = 0.85;
   }
@@ -193,42 +229,50 @@ function buildStandard(day, size) {
 }
 
 // ---------- lock screen: rectangular ----------
-function buildRectangular(day) {
+function buildRectangular(info) {
   const w = new ListWidget();
-  if (!day) {
+  if (!info) {
     const t = w.addText("No meal today");
     t.font = Font.semiboldSystemFont(13);
     return w;
   }
-  const label = w.addText("🍽 Today's dinner");
+  const dinner = info.dinner;
+  const label = w.addText(dinner.skipped ? "🍽 Dinner (skipped)" : "🍽 Today's dinner");
   label.font = Font.mediumSystemFont(11);
   w.addSpacer(2);
-  const title = w.addText(day.dinner.title);
+  const title = w.addText(dinner.title);
   title.font = Font.semiboldSystemFont(14);
   title.lineLimit = 2; title.minimumScaleFactor = 0.8;
-  const stars = starText(ratingFor(ratings, day.dinner.title));
+  if (dinner.skipped) return w;
+  const stars = starText(ratingFor(ratings, dinner.title));
   if (stars) {
     w.addSpacer(1);
     const st = w.addText(stars);
     st.font = Font.systemFont(11);
+  } else if (dinner.movedFrom) {
+    w.addSpacer(1);
+    const mv = w.addText("↺ moved from " + shortDay(dinner.movedFrom));
+    mv.font = Font.systemFont(11); mv.textOpacity = 0.7; mv.lineLimit = 1;
   } else {
     w.addSpacer(1);
-    const lun = w.addText(day.lunch.title);
+    const lun = w.addText(info.lunch.title);
     lun.font = Font.systemFont(11); lun.textOpacity = 0.7; lun.lineLimit = 1;
   }
   return w;
 }
 
 // ---------- lock screen: inline ----------
-function buildInline(day) {
+function buildInline(info) {
   const w = new ListWidget();
-  const t = w.addText(day ? `🍽 ${day.dinner.title}` : "🍽 No meal today");
+  let txt = "🍽 No meal today";
+  if (info) txt = info.dinner.skipped ? `🍽 Dinner skipped` : `🍽 ${info.dinner.title}`;
+  const t = w.addText(txt);
   t.lineLimit = 1;
   return w;
 }
 
 // ---------- lock screen: circular ----------
-function buildCircular(day) {
+function buildCircular(info) {
   const w = new ListWidget();
   w.addSpacer();
   const row = w.addStack();
