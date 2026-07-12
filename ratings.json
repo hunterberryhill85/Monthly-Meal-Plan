@@ -1,5 +1,20 @@
 {
-  "updated": "2026-07-12T03:36:44.657Z",
+  "updated": "2026-07-12T03:39:22.435Z",
   "plan": "July Meal Plan",
-  "ratings": {}
+  "ratings": {
+    "Tilapia tacos with cabbage slaw + lime crema": {
+      "title": "Tilapia tacos with cabbage slaw + lime crema",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-09",
+          "rating": 2,
+          "at": "2026-07-12T03:39:21.832Z"
+        }
+      ],
+      "rating": 2,
+      "at": "2026-07-12T03:39:21.832Z"
+    }
+  }
 }
