@@ -28,6 +28,12 @@ const C = {
   starOff: Color.dynamic(new Color("#d2d5c2"), new Color("#464e34")),
 };
 
+// Module-level state, filled in by main() and read by the builders.
+let plan = null;
+let ratings = null;
+let today = "";
+let family = null;
+
 // ---------- helpers ----------
 function pad(n) { return String(n).padStart(2, "0"); }
 function todayStr() {
@@ -55,56 +61,9 @@ async function loadJSON(url, cacheName) {
   }
 }
 
-function ratingFor(ratings, title) {
-  if (!ratings || !ratings.ratings || !ratings.ratings[title]) return 0;
-  return ratings.ratings[title].rating || 0;
-}
-
-// ---------- data ----------
-let plan, ratings;
-try {
-  plan = await loadJSON(MEALS_URL, "mealplan_meals.json");
-} catch (e) {
-  const w = new ListWidget();
-  w.backgroundColor = C.bg;
-  const t = w.addText("Couldn't load the meal plan.");
-  t.textColor = C.text; t.font = Font.mediumSystemFont(14);
-  const s = w.addText("Check your connection and try again.");
-  s.textColor = C.dim; s.font = Font.systemFont(11);
-  return finish(w);
-}
-try { ratings = await loadJSON(RATINGS_URL, "mealplan_ratings.json"); } catch (e) { ratings = null; }
-
-const today = todayStr();
-const day = plan.days.find((d) => d.date === today);
-const family = config.widgetFamily; // null when run inside the app
-
-// ---------- build ----------
-let widget;
-if (family === "accessoryInline") widget = buildInline(day);
-else if (family === "accessoryCircular") widget = buildCircular(day);
-else if (family === "accessoryRectangular") widget = buildRectangular(day);
-else widget = buildStandard(day, family || "medium");
-
-return finish(widget);
-
-function finish(w) {
-  w.url = OPEN_URL;
-  // Roll over shortly after local midnight.
-  const mid = new Date();
-  mid.setHours(24, 0, 20, 0);
-  w.refreshAfterDate = mid;
-  if (config.runsInWidget) {
-    Script.setWidget(w);
-  } else {
-    // Preview when run inside the Scriptable app.
-    if (family === "accessoryInline" || family === "accessoryCircular" || family === "accessoryRectangular") w.presentAccessoryRectangular ? w.presentAccessoryRectangular() : w.presentSmall();
-    else if (family === "large") w.presentLarge();
-    else if (family === "small") w.presentSmall();
-    else w.presentMedium();
-  }
-  Script.complete();
-  return w;
+function ratingFor(rt, title) {
+  if (!rt || !rt.ratings || !rt.ratings[title]) return 0;
+  return rt.ratings[title].rating || 0;
 }
 
 // Star string for a rating (1–5), or null if unrated.
@@ -115,14 +74,68 @@ function starText(v) {
   return s;
 }
 
+// ---------- entry point ----------
+async function main() {
+  try {
+    plan = await loadJSON(MEALS_URL, "mealplan_meals.json");
+  } catch (e) {
+    present(errorWidget());
+    return;
+  }
+  try { ratings = await loadJSON(RATINGS_URL, "mealplan_ratings.json"); } catch (e) { ratings = null; }
+
+  today = todayStr();
+  family = config.widgetFamily; // null when run inside the app
+  const day = plan.days.find((d) => d.date === today);
+
+  let widget;
+  if (family === "accessoryInline") widget = buildInline(day);
+  else if (family === "accessoryCircular") widget = buildCircular(day);
+  else if (family === "accessoryRectangular") widget = buildRectangular(day);
+  else widget = buildStandard(day, family || "medium");
+
+  present(widget);
+}
+
+// Wire up tap target + refresh, then either install the widget or preview it.
+// Nothing is returned to the top level, so there is no "shortcut output".
+function present(w) {
+  w.url = OPEN_URL;
+  const mid = new Date();
+  mid.setHours(24, 0, 20, 0); // shortly after local midnight
+  w.refreshAfterDate = mid;
+
+  if (config.runsInWidget) {
+    Script.setWidget(w);
+  } else if (family === "accessoryInline" || family === "accessoryCircular" || family === "accessoryRectangular") {
+    if (w.presentAccessoryRectangular) w.presentAccessoryRectangular(); else w.presentSmall();
+  } else if (family === "large") {
+    w.presentLarge();
+  } else if (family === "small") {
+    w.presentSmall();
+  } else {
+    w.presentMedium();
+  }
+  Script.complete();
+}
+
+function errorWidget() {
+  const w = new ListWidget();
+  w.backgroundColor = C.bg;
+  const t = w.addText("Couldn't load the meal plan.");
+  t.textColor = C.text; t.font = Font.mediumSystemFont(14);
+  const s = w.addText("Check your connection and try again.");
+  s.textColor = C.dim; s.font = Font.systemFont(11);
+  return w;
+}
+
 // ---------- home-screen sizes: small / medium / large ----------
 function buildStandard(day, size) {
   const w = new ListWidget();
   w.backgroundColor = C.bg;
-  const pad = size === "small" ? 14 : 16;
-  w.setPadding(pad, pad, pad, pad);
+  const p = size === "small" ? 14 : 16;
+  w.setPadding(p, p, p, p);
 
-  // Header: weekday + date
   const d = parseDate(today);
   const head = w.addText(`${DOW[d.getDay()].toUpperCase()} · ${MON[d.getMonth()]} ${d.getDate()}`);
   head.textColor = C.accent;
@@ -140,38 +153,31 @@ function buildStandard(day, size) {
 
   w.addSpacer(size === "small" ? 8 : 10);
 
-  // Dinner
   const dinLabel = w.addText("DINNER");
-  dinLabel.textColor = C.dinner;
-  dinLabel.font = Font.heavySystemFont(9);
+  dinLabel.textColor = C.dinner; dinLabel.font = Font.heavySystemFont(9);
   w.addSpacer(3);
   const dinTitle = w.addText(day.dinner.title);
   dinTitle.textColor = C.text;
   dinTitle.font = Font.boldSystemFont(size === "small" ? 15 : size === "large" ? 22 : 18);
-  dinTitle.lineLimit = size === "small" ? 3 : size === "large" ? 3 : 2;
+  dinTitle.lineLimit = 3;
   dinTitle.minimumScaleFactor = 0.8;
 
-  // Rating stars (if rated)
   const stars = starText(ratingFor(ratings, day.dinner.title));
   if (stars) {
     w.addSpacer(5);
     const st = w.addText(stars);
-    st.textColor = C.star;
-    st.font = Font.systemFont(size === "small" ? 12 : 14);
+    st.textColor = C.star; st.font = Font.systemFont(size === "small" ? 12 : 14);
   }
 
-  // Large: show a few ingredients
   if (size === "large" && day.dinner.ingredients && day.dinner.ingredients.length) {
     w.addSpacer(10);
     const ingHead = w.addText("INGREDIENTS");
     ingHead.textColor = C.dim; ingHead.font = Font.heavySystemFont(9);
     w.addSpacer(4);
-    const list = day.dinner.ingredients.slice(0, 7).join("  ·  ");
-    const ing = w.addText(list);
+    const ing = w.addText(day.dinner.ingredients.slice(0, 7).join("  ·  "));
     ing.textColor = C.dim; ing.font = Font.systemFont(12); ing.lineLimit = 4;
   }
 
-  // Lunch (medium + large)
   if (size !== "small") {
     w.addSpacer(size === "large" ? 12 : 10);
     const lunLabel = w.addText("LUNCH");
@@ -233,3 +239,5 @@ function buildCircular(day) {
   w.addSpacer();
   return w;
 }
+
+await main();
