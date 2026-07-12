@@ -1,0 +1,241 @@
+{
+  "title": "July Meal Plan",
+  "subtitle": "July 6 – 31",
+  "days": [
+    {
+      "date": "2026-07-06",
+      "dinner": {
+        "title": "Sheet-pan chicken fajitas",
+        "ingredients": ["1.5 lb chicken", "3 bell peppers", "1 onion", "2 tbsp oil", "1 tbsp chili powder", "1 tsp cumin", "1 tsp garlic powder", "1 tsp paprika", "1 tsp salt", "Tortillas", "Sour cream", "Shredded cheese"],
+        "steps": ["Slice the chicken, bell peppers, and onion.", "Toss with the oil and all the spices.", "Roast at 425°F for 20–25 minutes.", "Serve in warm tortillas with sour cream and cheese."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich" }
+    },
+    {
+      "date": "2026-07-07",
+      "dinner": {
+        "title": "Ground beef spaghetti bolognese + garlic bread",
+        "ingredients": ["1 lb ground beef", "1 onion, diced", "3 cloves garlic", "1 jar marinara (or 28-oz crushed tomatoes + 1 tsp Italian seasoning)", "Spaghetti", "Parmesan", "Garlic bread"],
+        "steps": ["Brown the ground beef with the diced onion and garlic.", "Add the marinara and simmer 20 minutes.", "Toss with cooked spaghetti.", "Top with parmesan and serve with garlic bread."]
+      },
+      "lunch": { "title": "PB&J or tuna salad" }
+    },
+    {
+      "date": "2026-07-08",
+      "dinner": {
+        "title": "Pork chops, roasted potatoes, green beans",
+        "ingredients": ["Pork chops", "Salt", "Pepper", "Garlic powder", "Paprika", "Potatoes", "Oil", "Rosemary", "Green beans"],
+        "steps": ["Season chops with salt, pepper, garlic powder, and paprika.", "Sear 4 minutes per side, then rest 5 minutes.", "Roast quartered potatoes (tossed in oil + rosemary) at 425°F for 30 minutes.", "Steam or roast green beans alongside."]
+      },
+      "lunch": { "title": "Leftover bolognese (Tue dinner)" }
+    },
+    {
+      "date": "2026-07-09",
+      "dinner": {
+        "title": "Tilapia tacos with cabbage slaw + lime crema",
+        "ingredients": ["Tilapia fillets", "Cumin", "Chili powder", "Salt", "¼ head cabbage, shredded", "2 limes", "½ cup sour cream", "Tortillas"],
+        "steps": ["Season fillets with cumin, chili powder, and salt.", "Pan-sear 3 minutes per side.", "Slaw: shredded cabbage + juice of 1 lime + a pinch of salt.", "Crema: sour cream + lime juice + zest.", "Assemble in tortillas."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich" }
+    },
+    {
+      "date": "2026-07-10",
+      "dinner": {
+        "title": "Build-your-own bagel pizzas (movie night)",
+        "ingredients": ["Mini bagels", "Marinara", "Mozzarella", "Pepperoni or veggie toppings", "Carrot sticks", "Ranch"],
+        "steps": ["Split the mini bagels.", "Spread marinara and sprinkle mozzarella, then add toppings.", "Bake at 400°F for 8–10 minutes until the cheese melts.", "Serve with carrot sticks and ranch on the side."]
+      },
+      "lunch": { "title": "Leftover pork chops + potatoes, chopped over greens (Wed dinner)" }
+    },
+    {
+      "date": "2026-07-11",
+      "dinner": {
+        "title": "Backyard cookout — burgers, hot dogs, grilled chicken sausage",
+        "ingredients": ["Burger patties", "Salt", "Pepper", "Sliced cheese", "Hot dogs", "Chicken sausages", "Bell peppers", "Onion", "Buns", "Condiments", "Chips", "Watermelon"],
+        "steps": ["Grill burgers (salt/pepper, cheese near the end), hot dogs, and chicken sausages together — stagger start times since cook times differ.", "Sauté extra bell peppers and onion as a sausage topping.", "Serve with buns, condiments, and chips.", "Watermelon for dessert."]
+      },
+      "lunch": { "title": "Leftover bagel pizza, reheated (Fri dinner)" }
+    },
+    {
+      "date": "2026-07-12",
+      "dinner": {
+        "title": "Steak night — baked potatoes, Caesar salad",
+        "ingredients": ["Steaks", "Salt", "Butter", "Garlic", "Potatoes", "Romaine", "Caesar dressing", "Croutons", "Parmesan"],
+        "steps": ["Salt the steaks 40 minutes ahead.", "Sear in screaming-hot cast iron 3–4 minutes per side with butter and garlic; rest 10 minutes.", "Bake potatoes at 400°F for 60 minutes.", "Caesar: romaine, dressing, croutons, parmesan."]
+      },
+      "lunch": { "title": "Leftover cookout fixings — chopped burger over greens, or a cold hot dog/sausage sandwich (Sat dinner)" }
+    },
+    {
+      "date": "2026-07-13",
+      "dinner": {
+        "title": "Jalapeño cheddar cornbread crust chicken pot pie",
+        "ingredients": ["Carrots", "Onion", "Celery", "Garlic", "Butter", "Flour", "Chicken broth", "Half-and-half", "Thyme, sage, rosemary", "Smoked paprika, mustard, red pepper flakes, turmeric, nutmeg", "Shredded chicken (Costco chicken works well)", "Peas", "Cornmeal, cheddar, jalapeño (for cornbread batter)"],
+        "steps": ["Sauté carrots, onion, celery, and garlic in butter.", "Build a creamy filling with flour, chicken broth, and half-and-half, seasoned with thyme, sage, rosemary, smoked paprika, mustard, red pepper flakes, turmeric, and nutmeg.", "Stir in shredded chicken and peas.", "Top with a one-bowl jalapeño cheddar cornbread batter (browning the butter first adds a nutty depth).", "Bake until the crust is golden and set.", "Full recipe: moribyan.com/jalapeno-cheddar-cornbread-crust-chicken-pot-pie"]
+      },
+      "lunch": { "title": "Leftover steak, sliced cold on a sandwich (Sun dinner, Week 1)" }
+    },
+    {
+      "date": "2026-07-14",
+      "dinner": {
+        "title": "Chicken and rice soup — big batch, surgery day",
+        "ingredients": ["1 onion, diced", "3 carrots", "3 celery stalks", "8 cups chicken broth", "1 cup rice", "Diced chicken", "Salt", "Pepper", "Lemon"],
+        "steps": ["Sauté the onion, carrots, and celery.", "Add broth, rice, and diced chicken.", "Simmer 20 minutes until the rice is tender.", "Season with salt, pepper, and a squeeze of lemon.", "Makes a big pot — eat about half Tuesday and hold the rest for Wednesday, so there's no cooking the day after surgery."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich (keep it light/simple — surgery day)" }
+    },
+    {
+      "date": "2026-07-15",
+      "dinner": {
+        "title": "Leftover chicken and rice soup — recovery day 2",
+        "ingredients": [],
+        "note": "No cooking needed — reheat the second half of Tuesday's big pot of soup.",
+        "steps": []
+      },
+      "lunch": { "title": "Cheese quesadilla + black beans — easy, soft recovery food" }
+    },
+    {
+      "date": "2026-07-16",
+      "dinner": {
+        "title": "Baked lemon-garlic tilapia, rice, roasted zucchini",
+        "ingredients": ["Tilapia fillets", "Butter", "Garlic, minced", "Lemon slices", "Salt", "Pepper", "Zucchini", "Oil", "Rice"],
+        "steps": ["Lay fillets in a baking dish, top with butter, minced garlic, lemon slices, salt, and pepper.", "Bake at 400°F for 12–15 minutes.", "Roast zucchini rounds alongside (oil, salt, 15 minutes).", "Serve with rice."]
+      },
+      "lunch": { "title": "Egg salad or tuna salad sandwich" }
+    },
+    {
+      "date": "2026-07-17",
+      "dinner": {
+        "title": "Nachos (movie night)",
+        "ingredients": ["Tortilla chips", "Black beans", "Shredded cheese", "Salsa", "Sour cream"],
+        "steps": ["Spread tortilla chips on a sheet pan.", "Scatter warmed black beans and shredded cheese over the top.", "Bake at 400°F for 8–10 minutes until melted.", "Top with salsa and sour cream."]
+      },
+      "lunch": { "title": "Leftover baked tilapia, flaked over greens (Thu dinner)" }
+    },
+    {
+      "date": "2026-07-18",
+      "dinner": {
+        "title": "Grilled cheddar jalapeño brats with peppers & onions, oven fries, corn on the cob",
+        "ingredients": ["Cheddar jalapeño brats", "Bell peppers", "Onion", "Butter", "Buns", "Mustard", "Potatoes", "Oil", "Salt", "Corn on the cob"],
+        "steps": ["Grill or pan-sear brats 12–15 minutes, turning occasionally, until browned and heated through.", "Sauté sliced bell peppers + onion in butter until soft, 8–10 minutes.", "Oven fries: cut potatoes into wedges, toss in oil + salt, 425°F for 35 minutes, flip once.", "Boil or grill the corn.", "Serve brats on buns topped with the peppers and onions, mustard on the side."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich (nachos don't reheat well for lunch)" }
+    },
+    {
+      "date": "2026-07-19",
+      "dinner": {
+        "title": "Steak fajita bowls (rice, peppers, corn)",
+        "ingredients": ["Steak", "Bell peppers", "Onions", "Rice", "Corn", "Cheese", "Lime"],
+        "steps": ["Slice the steak thin against the grain.", "Sear hard, 2–3 minutes.", "Sauté the peppers and onions.", "Serve over rice with corn, cheese, and lime."]
+      },
+      "lunch": { "title": "Leftover brat, sliced into a bun with the peppers and onions (Sat dinner)" }
+    },
+    {
+      "date": "2026-07-20",
+      "dinner": {
+        "title": "Ground beef tacos (taco Tuesday, a day early)",
+        "ingredients": ["1 lb ground beef", "2 tbsp chili powder", "1 tsp cumin", "1 tsp garlic powder", "1 tsp paprika", "¼ cup water", "Tortillas", "Lettuce", "Cheese", "Sour cream", "Tomato"],
+        "steps": ["Brown 1 lb beef; add the chili powder, cumin, garlic powder, paprika, and ¼ cup water.", "Simmer 5 minutes.", "Serve in tortillas with lettuce, cheese, sour cream, and tomato."]
+      },
+      "lunch": { "title": "Leftover steak fajita bowl fixings (Week 2 Sun dinner)" }
+    },
+    {
+      "date": "2026-07-21",
+      "dinner": {
+        "title": "Grilled or pan-seared chicken Caesar wraps",
+        "ingredients": ["Chicken breasts", "Romaine", "Caesar dressing", "Parmesan", "Croutons", "Large tortillas"],
+        "steps": ["Season and sear chicken breasts 6–7 minutes per side; slice.", "Toss chopped romaine with Caesar dressing, parmesan, and crushed croutons.", "Roll everything in large tortillas."]
+      },
+      "lunch": { "title": "Taco salad — leftover taco beef over greens (Mon dinner)" }
+    },
+    {
+      "date": "2026-07-22",
+      "dinner": {
+        "title": "Blackened tilapia with cheese grits + sautéed spinach",
+        "ingredients": ["Tilapia fillets", "Paprika", "Cayenne", "Garlic powder", "Oregano", "Salt", "Butter", "1 cup grits", "4 cups water", "Cheddar", "Spinach", "Garlic"],
+        "steps": ["Coat fillets in blackening seasoning (paprika, cayenne, garlic powder, oregano, salt).", "Sear in butter 3 minutes per side.", "Grits: 1 cup grits in 4 cups water, 20 minutes, finish with cheddar + butter.", "Sauté spinach with garlic 2 minutes."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich" }
+    },
+    {
+      "date": "2026-07-23",
+      "dinner": {
+        "title": "Pork chop fried rice (uses leftover rice + carrots)",
+        "ingredients": ["Pork chops", "2 eggs", "Carrots", "Peas", "Cold cooked rice", "Soy sauce", "Sesame oil", "Green onion"],
+        "steps": ["Dice the pork chops, sear, and remove.", "Scramble 2 eggs and remove.", "Stir-fry diced carrots + peas, add cold cooked rice, soy sauce, and sesame oil.", "Fold everything back in with sliced green onion."]
+      },
+      "lunch": { "title": "Leftover blackened tilapia + grits (Wed dinner)" }
+    },
+    {
+      "date": "2026-07-24",
+      "dinner": {
+        "title": "DIY quesadillas (movie night)",
+        "ingredients": ["Tortillas", "Shredded cheese", "Any mix-ins she likes"],
+        "steps": ["Layer shredded cheese (and any mix-ins) into a tortilla.", "Fold and toast in a dry skillet 2–3 minutes per side until crisp and melted."]
+      },
+      "lunch": { "title": "Leftover pork chop fried rice (Thu dinner)" }
+    },
+    {
+      "date": "2026-07-25",
+      "dinner": {
+        "title": "Baked ziti with ground beef (makes leftovers)",
+        "ingredients": ["1 lb ground beef", "Marinara", "Ziti", "Ricotta (or cottage cheese)", "Spinach", "Mozzarella"],
+        "steps": ["Brown 1 lb beef, add marinara, and simmer.", "Toss with cooked ziti, dollops of ricotta, and a handful of spinach.", "Top with mozzarella.", "Bake at 375°F for 25 minutes."]
+      },
+      "lunch": { "title": "Leftover quesadilla, reheated (Fri dinner)" }
+    },
+    {
+      "date": "2026-07-26",
+      "dinner": {
+        "title": "Steak night",
+        "ingredients": ["Steaks", "Salt", "Butter", "Garlic", "A simple side — baked potato, rice, or orzo"],
+        "steps": ["Salt the steaks 40 minutes ahead.", "Sear in hot cast iron 3–4 minutes per side with butter and garlic; rest 10 minutes.", "Serve with a simple side — baked potato, rice, or orzo, whatever's on hand."]
+      },
+      "lunch": { "title": "Leftover baked ziti (Sat dinner) — carries into Monday of Week 4 too" }
+    },
+    {
+      "date": "2026-07-27",
+      "dinner": {
+        "title": "Chicken burrito bowls (rice, beans, corn, salsa)",
+        "ingredients": ["Chicken", "Rice", "Black beans", "Corn", "Salsa", "Cheese", "Sour cream", "Lime"],
+        "steps": ["Season and sear the chicken; slice.", "Build bowls: rice, warmed black beans, corn, salsa, cheese, sour cream.", "Squeeze of lime."]
+      },
+      "lunch": { "title": "Leftover baked ziti (Week 3 Sat dinner)" }
+    },
+    {
+      "date": "2026-07-28",
+      "dinner": {
+        "title": "Parmesan-crusted tilapia + orzo + roasted asparagus",
+        "ingredients": ["½ cup grated parmesan", "¼ cup breadcrumbs", "1 tsp garlic powder", "Tilapia fillets", "Mayo or butter", "Asparagus", "Orzo"],
+        "steps": ["Mix ½ cup grated parmesan, ¼ cup breadcrumbs, and 1 tsp garlic powder.", "Brush fillets with mayo or butter, then press on the crust.", "Bake at 425°F for 12 minutes.", "Roast asparagus alongside (10 minutes).", "Serve with buttered orzo."]
+      },
+      "lunch": { "title": "Leftover chicken burrito bowl fixings (Mon dinner)" }
+    },
+    {
+      "date": "2026-07-29",
+      "dinner": {
+        "title": "Korean-style beef bowls over rice",
+        "ingredients": ["1 lb ground beef", "¼ cup soy sauce", "2 tbsp brown sugar", "3 cloves garlic", "1 tsp sesame oil", "Red pepper flakes", "Rice", "Green onion", "Cucumber"],
+        "steps": ["Brown 1 lb ground beef.", "Sauce: ¼ cup soy sauce, 2 tbsp brown sugar, 3 cloves garlic, 1 tsp sesame oil, a pinch of red pepper flakes. Simmer 3 minutes.", "Serve over rice with green onion; cucumber slices on the side."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich" }
+    },
+    {
+      "date": "2026-07-30",
+      "dinner": {
+        "title": "Steak + veggie kebabs (end-of-month cleanout night)",
+        "ingredients": ["Steak", "Peppers", "Onion", "Zucchini", "Salt", "Pepper", "Garlic", "Rice or orzo"],
+        "steps": ["Cube the steak; skewer or skillet-sear with chunks of whatever produce is left (peppers, onion, zucchini).", "Season simply — salt, pepper, garlic.", "Serve over the last of the rice or orzo."]
+      },
+      "lunch": { "title": "Leftover Korean beef bowl (Wed dinner)" }
+    },
+    {
+      "date": "2026-07-31",
+      "dinner": {
+        "title": "Mini sliders (movie night)",
+        "ingredients": ["Ground beef", "Sliced cheese", "Mini buns", "Ketchup", "Pickles"],
+        "steps": ["Form small beef patties and press them flat.", "Griddle 3 minutes per side, melting cheese on top.", "Serve on mini buns with ketchup and pickles on the side."]
+      },
+      "lunch": { "title": "Leftover steak kebabs (Thu dinner)" }
+    }
+  ]
+}
