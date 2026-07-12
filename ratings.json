@@ -1,7 +1,21 @@
 {
-  "updated": "2026-07-12T03:39:22.435Z",
+  "updated": "2026-07-12T17:32:16.367Z",
   "plan": "July Meal Plan",
   "ratings": {
+    "Build-your-own bagel pizzas (movie night)": {
+      "title": "Build-your-own bagel pizzas (movie night)",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-10",
+          "rating": 4,
+          "at": "2026-07-12T17:25:45.722Z"
+        }
+      ],
+      "rating": 4,
+      "at": "2026-07-12T17:25:45.722Z"
+    },
     "Tilapia tacos with cabbage slaw + lime crema": {
       "title": "Tilapia tacos with cabbage slaw + lime crema",
       "type": "dinner",
@@ -10,11 +24,67 @@
         {
           "date": "2026-07-09",
           "rating": 2,
-          "at": "2026-07-12T03:39:21.832Z"
+          "at": "2026-07-12T17:25:51.724Z"
         }
       ],
       "rating": 2,
-      "at": "2026-07-12T03:39:21.832Z"
+      "at": "2026-07-12T17:25:51.724Z"
+    },
+    "Pork chops, roasted potatoes, green beans": {
+      "title": "Pork chops, roasted potatoes, green beans",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-08",
+          "rating": 3,
+          "at": "2026-07-12T17:25:57.164Z"
+        }
+      ],
+      "rating": 3,
+      "at": "2026-07-12T17:25:57.164Z"
+    },
+    "Ground beef spaghetti bolognese + garlic bread": {
+      "title": "Ground beef spaghetti bolognese + garlic bread",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-07",
+          "rating": 4,
+          "at": "2026-07-12T17:26:02.787Z"
+        }
+      ],
+      "rating": 4,
+      "at": "2026-07-12T17:26:02.787Z"
+    },
+    "Sheet-pan chicken fajitas": {
+      "title": "Sheet-pan chicken fajitas",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-06",
+          "rating": 4,
+          "at": "2026-07-12T17:26:08.019Z"
+        }
+      ],
+      "rating": 4,
+      "at": "2026-07-12T17:26:08.019Z"
+    },
+    "Backyard cookout — burgers, hot dogs, grilled chicken sausage": {
+      "title": "Backyard cookout — burgers, hot dogs, grilled chicken sausage",
+      "type": "dinner",
+      "count": 1,
+      "history": [
+        {
+          "date": "2026-07-11",
+          "rating": 5,
+          "at": "2026-07-12T17:26:20.027Z"
+        }
+      ],
+      "rating": 5,
+      "at": "2026-07-12T17:26:20.027Z"
     }
   }
 }
