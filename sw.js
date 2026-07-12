@@ -1,7 +1,7 @@
 /* Cache-first service worker so the app opens instantly and works offline.
    Bump VERSION whenever app files change — old caches are cleared on activate.
    Note: meals.json and GitHub API calls always go to network first when online. */
-const VERSION = "meal-v2";
+const VERSION = "meal-v3";
 const ASSETS = [
   "./",
   "./index.html",

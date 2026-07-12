@@ -8,8 +8,10 @@ const LS_GH = "mealGitHub";
 
 let PLAN = null;        // loaded meals.json
 let dayIndex = 0;       // which day is showing
-let view = "day";       // "day" | "detail" | "settings"
+let view = "day";       // "day" | "week" | "groceries" | "detail" | "settings"
 let detailCtx = null;   // { dayIndex, slot: "dinner"|"lunch" }
+let detailReturn = "day"; // which tab to return to from a detail view
+let weekAnchor = null;  // "YYYY-MM-DD" Sunday of the week shown in Week/Groceries
 
 /* ---------- helpers ---------- */
 const DOW = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -19,11 +21,32 @@ function parseDate(s) {
   const [y, m, d] = s.split("-").map(Number);
   return new Date(y, m - 1, d);
 }
-function todayStr() {
-  const d = new Date();
+function fmtDate(d) {
   const p = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
+function todayStr() { return fmtDate(new Date()); }
+function addDays(dateStr, n) {
+  const d = parseDate(dateStr);
+  d.setDate(d.getDate() + n);
+  return fmtDate(d);
+}
+// Sunday that begins the week containing dateStr.
+function sundayOf(dateStr) {
+  const d = parseDate(dateStr);
+  d.setDate(d.getDate() - d.getDay());
+  return fmtDate(d);
+}
+// The seven dates (Sun→Sat) of the week starting at anchor.
+function weekDates(anchor) {
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(anchor, i));
+}
+function dayIndexByDate(dateStr) {
+  return PLAN.days.findIndex((d) => d.date === dateStr);
+}
+// Plan bounds as week anchors, for enabling/disabling week navigation.
+function planFirstSunday() { return sundayOf(PLAN.days[0].date); }
+function planLastSunday() { return sundayOf(PLAN.days[PLAN.days.length - 1].date); }
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -119,6 +142,81 @@ function resetCell(dayIndex, slot) {
 }
 function resetAllSchedule() { saveOverrides({ plan: PLAN ? PLAN.title : null, cells: {} }); }
 
+/* ---------- grocery list ----------
+   Builds a Sun→Saturday shopping list from that week's dinner ingredients,
+   deduplicated and sorted into store-aisle categories. Checked-off items are
+   remembered per week (and cleared automatically when a new plan loads). */
+const LS_GROCERY = "mealGrocery";
+function getGrocery() {
+  try {
+    const o = JSON.parse(localStorage.getItem(LS_GROCERY));
+    if (o && o.plan === (PLAN ? PLAN.title : null)) return o;
+  } catch {}
+  return { plan: PLAN ? PLAN.title : null, checks: {} };
+}
+function saveGrocery(o) {
+  o.plan = PLAN ? PLAN.title : null;
+  localStorage.setItem(LS_GROCERY, JSON.stringify(o));
+}
+function groceryKey(anchor, norm) { return `${anchor}|${norm}`; }
+function isChecked(anchor, norm) { return !!getGrocery().checks[groceryKey(anchor, norm)]; }
+function toggleChecked(anchor, norm) {
+  const g = getGrocery();
+  const k = groceryKey(anchor, norm);
+  if (g.checks[k]) delete g.checks[k]; else g.checks[k] = true;
+  saveGrocery(g);
+}
+function clearWeekChecks(anchor) {
+  const g = getGrocery();
+  const pre = `${anchor}|`;
+  Object.keys(g.checks).forEach((k) => { if (k.startsWith(pre)) delete g.checks[k]; });
+  saveGrocery(g);
+}
+
+// Store-aisle buckets. Longest matching keyword across all categories wins, so
+// "bell pepper" lands in Produce while a bare "pepper" lands in Pantry.
+const GROCERY_CATS = [
+  { key: "produce", label: "Produce", icon: "🥬", kw: ["bell pepper", "peppers", "onion", "garlic", "potato", "potatoes", "tomato", "tomatoes", "cabbage", "lime", "lemon", "lettuce", "romaine", "carrot", "carrots", "celery", "greens", "watermelon", "cilantro", "avocado", "jalapeño", "jalapeno", "mushroom", "broccoli", "corn", "peas", "green bean", "green beans", "rosemary", "thyme", "sage", "spinach", "zucchini", "cucumber", "banana", "apple", "berry", "scallion", "ginger", "kale", "squash", "sweet potato", "herbs"] },
+  { key: "meat", label: "Meat & Seafood", icon: "🥩", kw: ["chicken sausage", "chicken sausages", "chicken", "ground beef", "beef", "pork chop", "pork chops", "pork", "steak", "steaks", "sausage", "sausages", "bacon", "turkey", "tilapia", "salmon", "shrimp", "tuna", "fish", "hot dog", "hot dogs", "burger", "burgers", "patties"] },
+  { key: "dairy", label: "Dairy & Eggs", icon: "🧀", kw: ["shredded cheese", "sliced cheese", "cheese", "milk", "butter", "sour cream", "half-and-half", "cream", "yogurt", "eggs", "egg", "parmesan", "mozzarella", "cheddar", "crema"] },
+  { key: "grains", label: "Bakery & Grains", icon: "🍞", kw: ["garlic bread", "cornbread", "bread", "tortilla", "tortillas", "buns", "bun", "bagel", "bagels", "rice", "pasta", "spaghetti", "noodle", "flour", "cornmeal", "croutons", "crouton", "roll", "rolls", "oats"] },
+  { key: "pantry", label: "Pantry & Spices", icon: "🧂", kw: ["salt", "pepper", "oil", "cumin", "chili powder", "chili", "smoked paprika", "paprika", "garlic powder", "italian seasoning", "seasoning", "sugar", "marinara", "caesar dressing", "dressing", "sauce", "chicken broth", "beef broth", "broth", "stock", "vinegar", "mustard", "ranch", "condiments", "condiment", "ketchup", "mayo", "jar", "honey", "syrup", "nutmeg", "turmeric", "red pepper flakes", "flakes", "extract", "baking", "chips", "croutons"] },
+];
+function categoryFor(item) {
+  const s = item.toLowerCase();
+  let best = null, bestLen = 0;
+  for (const cat of GROCERY_CATS) {
+    for (const k of cat.kw) {
+      if (k && s.includes(k) && k.length > bestLen) { best = cat; bestLen = k.length; }
+    }
+  }
+  return best || { key: "other", label: "Other", icon: "🛒" };
+}
+
+// Deduplicated ingredient rows for the week, in category order.
+function groceryItems(anchor) {
+  const map = new Map(); // norm -> { text, norm, count, cat }
+  weekDates(anchor).forEach((date) => {
+    const di = dayIndexByDate(date);
+    if (di < 0) return;
+    const meal = resolveMeal(di, "dinner");
+    if (meal.skipped || !meal.ingredients || !meal.ingredients.length) return;
+    meal.ingredients.forEach((raw) => {
+      const text = String(raw).trim();
+      if (!text) return;
+      const norm = text.toLowerCase();
+      if (map.has(norm)) map.get(norm).count++;
+      else map.set(norm, { text, norm, count: 1, cat: categoryFor(text) });
+    });
+  });
+  const order = GROCERY_CATS.map((c) => c.key).concat("other");
+  return [...map.values()].sort((a, b) => {
+    const ai = order.indexOf(a.cat.key), bi = order.indexOf(b.cat.key);
+    if (ai !== bi) return ai - bi;
+    return a.text.localeCompare(b.text);
+  });
+}
+
 /* ---------- bottom sheet + toast ---------- */
 function closeSheet() {
   const s = document.getElementById("sheet-overlay");
@@ -143,7 +241,7 @@ function toast(msg) {
   t._timer = setTimeout(() => t.classList.remove("show"), 2400);
 }
 
-function afterScheduleChange() { view = "day"; render(); }
+function afterScheduleChange() { view = detailReturn || "day"; render(); }
 
 function openMealActions(dayIndex, slot) {
   const day = PLAN.days[dayIndex];
@@ -281,6 +379,8 @@ async function pushRatings(statusEl, attempt = 0) {
 function render() {
   if (view === "settings") return renderSettings();
   if (view === "detail") return renderDetail();
+  if (view === "week") return renderWeek();
+  if (view === "groceries") return renderGroceries();
   return renderDay();
 }
 
@@ -290,6 +390,48 @@ function header() {
       <span class="app-title">${esc(PLAN.title)}</span>
       <button class="icon-btn" id="gearBtn" aria-label="Settings">⚙</button>
     </div>`;
+}
+
+// Fixed bottom navigation shown on the three main tabs.
+function tabBar(active) {
+  const tab = (id, label, icon) => `
+    <button class="tab ${active === id ? "active" : ""}" data-tab="${id}">
+      <span class="tab-icon">${icon}</span>
+      <span class="tab-label">${label}</span>
+    </button>`;
+  return `
+    <nav class="tab-bar">
+      ${tab("day", "Today", "🍽️")}
+      ${tab("week", "Week", "🗓️")}
+      ${tab("groceries", "Groceries", "🛒")}
+    </nav>`;
+}
+function wireTabs() {
+  document.querySelectorAll(".tab").forEach((b) => {
+    b.onclick = () => { view = b.dataset.tab; render(); };
+  });
+}
+// Shared ‹ › week stepper for Week and Groceries.
+function weekNav(subtitle) {
+  const first = planFirstSunday(), last = planLastSunday();
+  const start = parseDate(weekAnchor), end = parseDate(addDays(weekAnchor, 6));
+  const range = `${MON[start.getMonth()]} ${start.getDate()} – ${MON[end.getMonth()]} ${end.getDate()}`;
+  return `
+    <div class="week-nav">
+      <button class="nav-arrow" id="prevWeek" ${weekAnchor <= first ? "disabled" : ""}>‹</button>
+      <div class="week-center">
+        <div class="week-range">${range}</div>
+        ${subtitle ? `<div class="week-sub">${subtitle}</div>` : ""}
+      </div>
+      <button class="nav-arrow" id="nextWeek" ${weekAnchor >= last ? "disabled" : ""}>›</button>
+    </div>`;
+}
+function wireWeekNav() {
+  const first = planFirstSunday(), last = planLastSunday();
+  const prev = document.getElementById("prevWeek");
+  const next = document.getElementById("nextWeek");
+  if (prev) prev.onclick = () => { if (weekAnchor > first) { weekAnchor = addDays(weekAnchor, -7); render(); } };
+  if (next) next.onclick = () => { if (weekAnchor < last) { weekAnchor = addDays(weekAnchor, 7); render(); } };
 }
 
 function starsMini(title) {
@@ -345,6 +487,7 @@ function renderDay() {
     </div>
     ${card("dinner")}
     ${card("lunch")}
+    ${tabBar("day")}
   `;
 
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
@@ -353,8 +496,139 @@ function renderDay() {
   if (prev) prev.onclick = () => { if (dayIndex > 0) { dayIndex--; render(); } };
   if (next) next.onclick = () => { if (dayIndex < PLAN.days.length - 1) { dayIndex++; render(); } };
   app.querySelectorAll(".meal-card").forEach((el) => {
-    el.onclick = () => { detailCtx = { dayIndex, slot: el.dataset.slot }; view = "detail"; render(); };
+    el.onclick = () => { detailCtx = { dayIndex, slot: el.dataset.slot }; detailReturn = "day"; view = "detail"; render(); };
   });
+  wireTabs();
+}
+
+/* ---------- week view ---------- */
+function renderWeek() {
+  const dates = weekDates(weekAnchor);
+  const today = todayStr();
+
+  const rows = dates.map((date) => {
+    const di = dayIndexByDate(date);
+    const d = parseDate(date);
+    const isToday = date === today;
+    const dowFull = DOW[d.getDay()];
+    const dateLabel = `${MON[d.getMonth()]} ${d.getDate()}`;
+
+    if (di < 0) {
+      return `
+        <div class="week-day empty">
+          <div class="wd-side">
+            <div class="wd-dow">${dowFull.slice(0, 3)}</div>
+            <div class="wd-date">${dateLabel}</div>
+          </div>
+          <div class="wd-meals"><div class="wd-empty">No meal planned</div></div>
+        </div>`;
+    }
+
+    const line = (slot) => {
+      const meal = resolveMeal(di, slot);
+      const label = slot === "dinner" ? "Dinner" : "Lunch";
+      const cls = meal.skipped ? "wd-meal skipped" : "wd-meal";
+      const name = meal.skipped
+        ? `<span class="wd-name struck">${esc(meal.title)}</span>`
+        : `<span class="wd-name">${esc(meal.title)}</span>`;
+      const stars = (!meal.skipped && ratingFor(meal.title)) ? starsMini(meal.title) : "";
+      return `
+        <button class="${cls}" data-i="${di}" data-slot="${slot}">
+          <span class="wd-slot ${slot}">${label}</span>
+          ${name}
+          ${stars ? `<span class="wd-stars">${stars}</span>` : ""}
+        </button>`;
+    };
+
+    return `
+      <div class="week-day ${isToday ? "is-today" : ""}">
+        <div class="wd-side">
+          <div class="wd-dow">${dowFull.slice(0, 3)}</div>
+          <div class="wd-date">${dateLabel}</div>
+          ${isToday ? `<span class="wd-today">Today</span>` : ""}
+        </div>
+        <div class="wd-meals">
+          ${line("dinner")}
+          ${line("lunch")}
+        </div>
+      </div>`;
+  }).join("");
+
+  app.innerHTML = `
+    ${header()}
+    ${weekNav("Tap a meal for the recipe")}
+    <div class="week-list">${rows}</div>
+    ${tabBar("week")}
+  `;
+
+  document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
+  wireWeekNav();
+  app.querySelectorAll(".wd-meal").forEach((el) => {
+    el.onclick = () => {
+      detailCtx = { dayIndex: Number(el.dataset.i), slot: el.dataset.slot };
+      detailReturn = "week";
+      view = "detail";
+      render();
+    };
+  });
+  wireTabs();
+}
+
+/* ---------- groceries view ---------- */
+function renderGroceries() {
+  const items = groceryItems(weekAnchor);
+  const total = items.length;
+  const done = items.filter((it) => isChecked(weekAnchor, it.norm)).length;
+
+  let body;
+  if (!total) {
+    body = `<div class="grocery-empty">No dinner ingredients for this week.<br><span>Weeks with only leftovers or notes won't have a list.</span></div>`;
+  } else {
+    // Group into category sections in the order groceryItems already sorted them.
+    let html = "";
+    let curKey = null;
+    items.forEach((it) => {
+      if (it.cat.key !== curKey) {
+        if (curKey !== null) html += `</div>`;
+        curKey = it.cat.key;
+        html += `<div class="grocery-cat"><div class="cat-head"><span class="cat-icon">${it.cat.icon}</span>${it.cat.label}</div>`;
+      }
+      const checked = isChecked(weekAnchor, it.norm);
+      const qty = it.count > 1 ? `<span class="g-qty">×${it.count}</span>` : "";
+      html += `
+        <button class="g-item ${checked ? "checked" : ""}" data-norm="${esc(it.norm)}">
+          <span class="g-box">${checked ? "✓" : ""}</span>
+          <span class="g-text">${esc(it.text)}</span>
+          ${qty}
+        </button>`;
+    });
+    if (curKey !== null) html += `</div>`;
+
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    body = `
+      <div class="grocery-progress">
+        <div class="gp-track"><div class="gp-fill" style="width:${pct}%"></div></div>
+        <div class="gp-label">${done} of ${total} gathered</div>
+      </div>
+      ${html}
+      <button class="btn-ghost g-clear" id="clearChecks">Uncheck all</button>`;
+  }
+
+  app.innerHTML = `
+    ${header()}
+    ${weekNav("Dinner ingredients, Sun–Sat")}
+    ${body}
+    ${tabBar("groceries")}
+  `;
+
+  document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
+  wireWeekNav();
+  app.querySelectorAll(".g-item").forEach((el) => {
+    el.onclick = () => { toggleChecked(weekAnchor, el.dataset.norm); render(); };
+  });
+  const clr = document.getElementById("clearChecks");
+  if (clr) clr.onclick = () => { clearWeekChecks(weekAnchor); render(); };
+  wireTabs();
 }
 
 function renderDetail() {
@@ -396,7 +670,7 @@ function renderDetail() {
 
   app.innerHTML = `
     ${header()}
-    <button class="detail-back" id="backBtn">‹ ${DOW[d.getDay()]}</button>
+    <button class="detail-back" id="backBtn">‹ ${detailReturn === "week" ? "Week" : DOW[d.getDay()]}</button>
     <div class="detail-kicker ${slot === "dinner" ? "" : ""}" style="color:var(--${slot})">${slot === "dinner" ? "Dinner" : "Lunch"}</div>
     <div class="detail-title">${esc(meal.title)}</div>
     <div class="detail-date">${dateLine}</div>
@@ -415,7 +689,7 @@ function renderDetail() {
   `;
 
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
-  document.getElementById("backBtn").onclick = () => { view = "day"; render(); };
+  document.getElementById("backBtn").onclick = () => { view = detailReturn; render(); };
   const smBtn = document.getElementById("skipMoveBtn");
   if (smBtn) smBtn.onclick = () => openMealActions(detailCtx.dayIndex, slot);
 
@@ -581,6 +855,11 @@ fetch("./meals.json")
   .then((data) => {
     PLAN = data;
     dayIndex = pickStartDay();
+    // Week/Groceries default to the calendar week containing today, clamped to the plan.
+    let anchor = sundayOf(todayStr());
+    if (anchor < planFirstSunday()) anchor = planFirstSunday();
+    if (anchor > planLastSunday()) anchor = planLastSunday();
+    weekAnchor = anchor;
     render();
   })
   .catch((e) => {
