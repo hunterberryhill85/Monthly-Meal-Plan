@@ -497,8 +497,20 @@ async function hydrateFromRepo() {
   } catch (e) { /* offline or not configured — keep local */ }
 }
 
+/* ---------- cooking mode: keep the screen awake while a recipe is open ---------- */
+let wakeLock = null;
+let cookingActive = false;
+async function requestWake() {
+  try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { /* denied/unsupported */ }
+}
+async function releaseWake() {
+  try { if (wakeLock) { await wakeLock.release(); wakeLock = null; } } catch (e) {}
+}
+
 /* ---------- views ---------- */
 function render() {
+  // Leaving the recipe screen ends cooking mode and lets the screen sleep again.
+  if (view !== "detail" && cookingActive) { cookingActive = false; releaseWake(); }
   if (view === "settings") return renderSettings();
   if (view === "detail") return renderDetail();
   if (view === "week") return renderWeek();
@@ -858,9 +870,9 @@ function renderDetail() {
 
   let body = "";
   if (hasRecipe) {
-    body += `<div class="section-head">Ingredients</div><div class="card">`;
+    body += `<div class="section-head">Ingredients</div><div class="cook-hint">Tap items to check them off — the screen stays awake while you cook.</div><div class="card">`;
     meal.ingredients.forEach((ing) => {
-      body += `<div class="ingredient"><span class="dot"></span><span>${esc(ing)}</span></div>`;
+      body += `<div class="ingredient check"><span class="dot"></span><span>${esc(ing)}</span></div>`;
     });
     body += `</div>`;
 
@@ -870,7 +882,7 @@ function renderDetail() {
         /((?:https?:\/\/)?[\w.-]+\.[a-z]{2,}\/[\w./-]+)/gi,
         (m) => `<a class="recipe-link" href="${m.startsWith("http") ? m : "https://" + m}" target="_blank" rel="noopener">${m}</a>`
       );
-      body += `<div class="step"><span class="num">${i + 1}</span><span>${linkified}</span></div>`;
+      body += `<div class="step check"><span class="num">${i + 1}</span><span>${linkified}</span></div>`;
     });
     body += `</div>`;
   } else if (meal.skipped) {
@@ -909,6 +921,13 @@ function renderDetail() {
   document.getElementById("backBtn").onclick = () => { view = detailReturn; render(); };
   const smBtn = document.getElementById("skipMoveBtn");
   if (smBtn) smBtn.onclick = () => openMealActions(detailCtx.dayIndex, slot);
+
+  // Cooking check-off: tap an ingredient/step to strike it through (ignore link taps).
+  app.querySelectorAll(".ingredient.check, .step.check").forEach((el) => {
+    el.onclick = (e) => { if (e.target.closest("a")) return; el.classList.toggle("done"); };
+  });
+  // Keep the screen awake while an actual recipe is open.
+  if (hasRecipe) { cookingActive = true; requestWake(); } else { cookingActive = false; releaseWake(); }
 
   const statusEl = document.getElementById("rateStatus");
   app.querySelectorAll(".star-btn").forEach((btn) => {
@@ -1085,6 +1104,12 @@ fetch("./meals.json")
   .catch((e) => {
     app.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim)">Couldn't load meals.json<br><small>${esc(e.message)}</small></div>`;
   });
+
+// iOS drops the wake lock when the app is backgrounded; re-acquire it on return
+// if a recipe is still open.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && cookingActive) requestWake();
+});
 
 /* PWA */
 if ("serviceWorker" in navigator) {
