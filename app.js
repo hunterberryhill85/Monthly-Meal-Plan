@@ -422,6 +422,81 @@ async function pushOverrides(attempt = 0) {
   } catch (e) { /* offline or not configured — ignore */ }
 }
 
+/* ---------- hydrate from repo ----------
+   The app commits ratings/overrides to the repo but, on a fresh device or after
+   clearing browser data, local storage starts empty. On load (when sync is on) we
+   pull ratings.json + overrides.json back and merge them in, so the data is durable
+   and consistent across devices. Fetched via the GitHub API so the service worker
+   never serves a stale copy. Merges do NOT trigger a push (avoids commit loops). */
+async function ghGetJSON(path) {
+  const g = getGH();
+  const branch = g.branch || "main";
+  const api = `https://api.github.com/repos/${g.owner}/${g.repo}/contents/${path}?ref=${encodeURIComponent(branch)}`;
+  const res = await fetch(api, {
+    headers: { "Authorization": `Bearer ${g.token}`, "Accept": "application/vnd.github+json" },
+    cache: "no-store",
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`${path} ${res.status}`);
+  const j = await res.json();
+  const text = decodeURIComponent(escape(atob(String(j.content || "").replace(/\n/g, ""))));
+  return JSON.parse(text);
+}
+
+// Merge two ratings maps ({title: entry}); histories are unioned by timestamp and
+// the latest rating wins, so no device loses a rating it recorded.
+function mergeRatings(remote) {
+  const local = getRatings();
+  const out = {};
+  const titles = new Set([...Object.keys(local), ...Object.keys(remote || {})]);
+  titles.forEach((t) => {
+    const a = local[t], b = (remote || {})[t];
+    if (a && b) {
+      const byAt = {};
+      [...(a.history || []), ...(b.history || [])].forEach((h) => { if (h && h.at) byAt[h.at] = h; });
+      const hist = Object.values(byAt).sort((x, y) => (x.at < y.at ? -1 : 1));
+      const latest = hist[hist.length - 1] || {};
+      out[t] = {
+        title: t,
+        type: a.type || b.type,
+        rating: latest.rating != null ? latest.rating : (a.rating != null ? a.rating : b.rating),
+        at: latest.at || a.at || b.at,
+        history: hist,
+        count: hist.length,
+      };
+    } else {
+      out[t] = a || b;
+    }
+  });
+  return out;
+}
+
+// Adopt remote schedule overrides when this device has none (fresh device); if both
+// have cells, this device's local cells win on conflict. Only for the current plan.
+function mergeOverrides(remote) {
+  if (!remote || remote.plan !== (PLAN ? PLAN.title : null)) return;
+  const local = getOverrides();
+  const cells = Object.keys(local.cells).length
+    ? Object.assign({}, remote.cells || {}, local.cells)
+    : (remote.cells || {});
+  localStorage.setItem(LS_OVERRIDES, JSON.stringify({ plan: PLAN.title, cells }));
+}
+
+async function hydrateFromRepo() {
+  if (!ghReady()) return;
+  const g = getGH();
+  try {
+    const [rj, oj] = await Promise.all([
+      ghGetJSON(g.path || "ratings.json").catch(() => null),
+      ghGetJSON("overrides.json").catch(() => null),
+    ]);
+    let changed = false;
+    if (rj && rj.ratings) { saveRatings(mergeRatings(rj.ratings)); changed = true; }
+    if (oj) { mergeOverrides(oj); changed = true; }
+    if (changed) render();
+  } catch (e) { /* offline or not configured — keep local */ }
+}
+
 /* ---------- views ---------- */
 function render() {
   if (view === "settings") return renderSettings();
@@ -908,8 +983,9 @@ fetch("./meals.json")
     if (anchor > planLastSunday()) anchor = planLastSunday();
     weekAnchor = anchor;
     render();
-    // Push any skips/moves already saved on this device so the widget reflects them.
-    if (hasChanges()) schedulePushOverrides();
+    // Pull ratings/overrides back from the repo so a fresh device or reinstall isn't
+    // blank, and this device stays consistent with the widget and other devices.
+    hydrateFromRepo();
   })
   .catch((e) => {
     app.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-dim)">Couldn't load meals.json<br><small>${esc(e.message)}</small></div>`;
