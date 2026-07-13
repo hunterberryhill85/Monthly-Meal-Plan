@@ -222,6 +222,16 @@ html, body {
 }
 .recipe-link { color: var(--accent); word-break: break-word; }
 
+/* ---------- cooking mode check-off ---------- */
+.cook-hint { font-size: 12px; color: var(--text-dim); margin: -4px 0 12px; }
+.ingredient.check, .step.check { cursor: pointer; -webkit-user-select: none; user-select: none; }
+.ingredient.check:active, .step.check:active { opacity: 0.6; }
+.ingredient.done > span:last-child { text-decoration: line-through; color: var(--text-dim); }
+.ingredient.done .dot { background: var(--accent); transform: scale(1.35); }
+.step.done { opacity: 0.55; }
+.step.done > span:last-child { text-decoration: line-through; }
+.step.done .num { background: var(--accent); color: #fff; }
+
 /* ---------- Rating ---------- */
 .rate-block {
   margin: 30px 0 10px;
