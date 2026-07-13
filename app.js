@@ -151,9 +151,14 @@ const LS_GROCERY = "mealGrocery";
 function getGrocery() {
   try {
     const o = JSON.parse(localStorage.getItem(LS_GROCERY));
-    if (o && o.plan === (PLAN ? PLAN.title : null)) return o;
+    if (o && o.plan === (PLAN ? PLAN.title : null)) {
+      o.checks = o.checks || {};
+      o.extras = o.extras || {};   // per-week custom items: { anchor: [text, …] }
+      o.staples = o.staples || {}; // "always have" items: { norm: true } (all weeks)
+      return o;
+    }
   } catch {}
-  return { plan: PLAN ? PLAN.title : null, checks: {} };
+  return { plan: PLAN ? PLAN.title : null, checks: {}, extras: {}, staples: {} };
 }
 function saveGrocery(o) {
   o.plan = PLAN ? PLAN.title : null;
@@ -173,12 +178,33 @@ function clearWeekChecks(anchor) {
   Object.keys(g.checks).forEach((k) => { if (k.startsWith(pre)) delete g.checks[k]; });
   saveGrocery(g);
 }
+// Custom items you add for a given week.
+function addExtra(anchor, text) {
+  const t = String(text).trim();
+  if (!t) return;
+  const g = getGrocery();
+  g.extras[anchor] = g.extras[anchor] || [];
+  if (!g.extras[anchor].some((x) => x.toLowerCase() === t.toLowerCase())) g.extras[anchor].push(t);
+  saveGrocery(g);
+}
+function removeExtra(anchor, norm) {
+  const g = getGrocery();
+  g.extras[anchor] = (g.extras[anchor] || []).filter((x) => x.toLowerCase() !== norm);
+  saveGrocery(g);
+}
+// "Always have" staples are hidden from the shopping part of the list.
+function isStaple(norm) { return !!getGrocery().staples[norm]; }
+function toggleStaple(norm) {
+  const g = getGrocery();
+  if (g.staples[norm]) delete g.staples[norm]; else g.staples[norm] = true;
+  saveGrocery(g);
+}
 
 // Store-aisle buckets. Longest matching keyword across all categories wins, so
 // "bell pepper" lands in Produce while a bare "pepper" lands in Pantry.
 const GROCERY_CATS = [
   { key: "produce", label: "Produce", icon: "🥬", kw: ["bell pepper", "peppers", "onion", "garlic", "potato", "potatoes", "tomato", "tomatoes", "cabbage", "lime", "lemon", "lettuce", "romaine", "carrot", "carrots", "celery", "greens", "watermelon", "cilantro", "avocado", "jalapeño", "jalapeno", "mushroom", "broccoli", "corn", "peas", "green bean", "green beans", "rosemary", "thyme", "sage", "spinach", "zucchini", "cucumber", "banana", "apple", "berry", "scallion", "ginger", "kale", "squash", "sweet potato", "herbs"] },
-  { key: "meat", label: "Meat & Seafood", icon: "🥩", kw: ["chicken sausage", "chicken sausages", "chicken", "ground beef", "beef", "pork chop", "pork chops", "pork", "steak", "steaks", "sausage", "sausages", "bacon", "turkey", "tilapia", "salmon", "shrimp", "tuna", "fish", "hot dog", "hot dogs", "burger", "burgers", "patties"] },
+  { key: "meat", label: "Meat & Seafood", icon: "🥩", kw: ["chicken sausage", "chicken sausages", "chicken", "ground beef", "beef", "pork chop", "pork chops", "pork", "steak", "steaks", "sausage", "sausages", "brats", "bratwurst", "bacon", "ham", "turkey", "tilapia", "salmon", "cod", "shrimp", "tuna", "fish", "hot dog", "hot dogs", "burger", "burgers", "patties", "meatball", "meatballs"] },
   { key: "dairy", label: "Dairy & Eggs", icon: "🧀", kw: ["shredded cheese", "sliced cheese", "cheese", "milk", "butter", "sour cream", "half-and-half", "cream", "yogurt", "eggs", "egg", "parmesan", "mozzarella", "cheddar", "crema"] },
   { key: "grains", label: "Bakery & Grains", icon: "🍞", kw: ["garlic bread", "cornbread", "bread", "tortilla", "tortillas", "buns", "bun", "bagel", "bagels", "rice", "pasta", "spaghetti", "noodle", "flour", "cornmeal", "croutons", "crouton", "roll", "rolls", "oats"] },
   { key: "pantry", label: "Pantry & Spices", icon: "🧂", kw: ["salt", "pepper", "oil", "cumin", "chili powder", "chili", "smoked paprika", "paprika", "garlic powder", "italian seasoning", "seasoning", "sugar", "marinara", "caesar dressing", "dressing", "sauce", "chicken broth", "beef broth", "broth", "stock", "vinegar", "mustard", "ranch", "condiments", "condiment", "ketchup", "mayo", "jar", "honey", "syrup", "nutmeg", "turmeric", "red pepper flakes", "flakes", "extract", "baking", "chips", "croutons"] },
@@ -194,9 +220,10 @@ function categoryFor(item) {
   return best || { key: "other", label: "Other", icon: "🛒" };
 }
 
-// Deduplicated ingredient rows for the week, in category order.
+// Deduplicated shopping rows for the week (plan ingredients + your custom items),
+// tagged with category, staple flag, and source, in category order.
 function groceryItems(anchor) {
-  const map = new Map(); // norm -> { text, norm, count, cat }
+  const map = new Map(); // norm -> { text, norm, count, cat, source }
   weekDates(anchor).forEach((date) => {
     const di = dayIndexByDate(date);
     if (di < 0) return;
@@ -207,15 +234,23 @@ function groceryItems(anchor) {
       if (!text) return;
       const norm = text.toLowerCase();
       if (map.has(norm)) map.get(norm).count++;
-      else map.set(norm, { text, norm, count: 1, cat: categoryFor(text) });
+      else map.set(norm, { text, norm, count: 1, cat: categoryFor(text), source: "plan" });
     });
   });
-  const order = GROCERY_CATS.map((c) => c.key).concat("other");
-  return [...map.values()].sort((a, b) => {
-    const ai = order.indexOf(a.cat.key), bi = order.indexOf(b.cat.key);
-    if (ai !== bi) return ai - bi;
-    return a.text.localeCompare(b.text);
+  // Your own added items for this week (don't duplicate a plan ingredient).
+  (getGrocery().extras[anchor] || []).forEach((text) => {
+    const norm = String(text).toLowerCase();
+    if (!map.has(norm)) map.set(norm, { text, norm, count: 1, cat: categoryFor(text), source: "extra" });
   });
+  const g = getGrocery();
+  const order = GROCERY_CATS.map((c) => c.key).concat("other");
+  return [...map.values()]
+    .map((it) => Object.assign(it, { staple: !!g.staples[it.norm] }))
+    .sort((a, b) => {
+      const ai = order.indexOf(a.cat.key), bi = order.indexOf(b.cat.key);
+      if (ai !== bi) return ai - bi;
+      return a.text.localeCompare(b.text);
+    });
 }
 
 /* ---------- bottom sheet + toast ---------- */
@@ -725,59 +760,128 @@ function renderWeek() {
 
 /* ---------- groceries view ---------- */
 function renderGroceries() {
-  const items = groceryItems(weekAnchor);
-  const total = items.length;
-  const done = items.filter((it) => isChecked(weekAnchor, it.norm)).length;
+  const all = groceryItems(weekAnchor);
+  const shopping = all.filter((it) => !it.staple);
+  const staples = all.filter((it) => it.staple);
+  const total = shopping.length;
+  const done = shopping.filter((it) => isChecked(weekAnchor, it.norm)).length;
 
-  let body;
-  if (!total) {
-    body = `<div class="grocery-empty">No dinner ingredients for this week.<br><span>Weeks with only leftovers or notes won't have a list.</span></div>`;
+  const addForm = `
+    <form class="g-add" id="addForm">
+      <input id="addInput" class="g-add-input" type="text" placeholder="Add an item…" autocapitalize="none" autocorrect="off" enterkeyhint="done">
+      <button type="submit" class="g-add-btn">Add</button>
+    </form>`;
+
+  let listHtml = "";
+  if (!total && !staples.length) {
+    listHtml = `<div class="grocery-empty">Nothing to buy for this week.<br><span>Add your own items above, or check another week.</span></div>`;
   } else {
-    // Group into category sections in the order groceryItems already sorted them.
-    let html = "";
     let curKey = null;
-    items.forEach((it) => {
+    shopping.forEach((it) => {
       if (it.cat.key !== curKey) {
-        if (curKey !== null) html += `</div>`;
+        if (curKey !== null) listHtml += `</div>`;
         curKey = it.cat.key;
-        html += `<div class="grocery-cat"><div class="cat-head"><span class="cat-icon">${it.cat.icon}</span>${it.cat.label}</div>`;
+        listHtml += `<div class="grocery-cat"><div class="cat-head"><span class="cat-icon">${it.cat.icon}</span>${it.cat.label}</div>`;
       }
       const checked = isChecked(weekAnchor, it.norm);
       const qty = it.count > 1 ? `<span class="g-qty">×${it.count}</span>` : "";
-      html += `
-        <button class="g-item ${checked ? "checked" : ""}" data-norm="${esc(it.norm)}">
-          <span class="g-box">${checked ? "✓" : ""}</span>
-          <span class="g-text">${esc(it.text)}</span>
-          ${qty}
-        </button>`;
+      const side = it.source === "extra"
+        ? `<button class="g-side" data-act="delete" data-norm="${esc(it.norm)}" aria-label="Remove item">✕</button>`
+        : `<button class="g-side" data-act="staple" data-norm="${esc(it.norm)}" aria-label="Mark as always have">📌</button>`;
+      listHtml += `
+        <div class="g-item ${checked ? "checked" : ""}">
+          <button class="g-check" data-norm="${esc(it.norm)}">
+            <span class="g-box">${checked ? "✓" : ""}</span>
+            <span class="g-text">${esc(it.text)}</span>
+            ${qty}
+          </button>
+          ${side}
+        </div>`;
     });
-    if (curKey !== null) html += `</div>`;
-
-    const pct = total ? Math.round((done / total) * 100) : 0;
-    body = `
-      <div class="grocery-progress">
-        <div class="gp-track"><div class="gp-fill" style="width:${pct}%"></div></div>
-        <div class="gp-label">${done} of ${total} gathered</div>
-      </div>
-      ${html}
-      <button class="btn-ghost g-clear" id="clearChecks">Uncheck all</button>`;
+    if (curKey !== null) listHtml += `</div>`;
   }
+
+  let staplesHtml = "";
+  if (staples.length) {
+    staplesHtml = `<div class="section-head">Always have <span class="rt-count">${staples.length}</span></div><div class="grocery-cat">`;
+    staples.forEach((it) => {
+      staplesHtml += `
+        <div class="g-item staple">
+          <span class="g-text dim">${esc(it.text)}</span>
+          <button class="g-side" data-act="unstaple" data-norm="${esc(it.norm)}" aria-label="Add back to list">↩</button>
+        </div>`;
+    });
+    staplesHtml += `</div>`;
+  }
+
+  const progress = total ? `
+    <div class="grocery-progress">
+      <div class="gp-track"><div class="gp-fill" style="width:${Math.round((done / total) * 100)}%"></div></div>
+      <div class="gp-label">${done} of ${total} gathered</div>
+    </div>` : "";
+
+  const actions = (total || staples.length) ? `
+    <div class="g-actions">
+      <button class="btn-ghost" id="copyList">Copy / share list</button>
+      ${total ? `<button class="btn-ghost g-clear" id="clearChecks">Uncheck all</button>` : ""}
+    </div>` : "";
 
   app.innerHTML = `
     ${header()}
     ${weekNav("Dinner ingredients, Sun–Sat")}
-    ${body}
+    ${addForm}
+    ${progress}
+    ${listHtml}
+    ${staplesHtml}
+    ${actions}
     ${tabBar("groceries")}
   `;
 
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
   wireWeekNav();
-  app.querySelectorAll(".g-item").forEach((el) => {
+
+  document.getElementById("addForm").onsubmit = (e) => {
+    e.preventDefault();
+    const v = document.getElementById("addInput").value;
+    if (v.trim()) { addExtra(weekAnchor, v); render(); }
+  };
+  app.querySelectorAll(".g-check").forEach((el) => {
     el.onclick = () => { toggleChecked(weekAnchor, el.dataset.norm); render(); };
+  });
+  app.querySelectorAll(".g-side").forEach((el) => {
+    el.onclick = () => {
+      const norm = el.dataset.norm;
+      if (el.dataset.act === "delete") removeExtra(weekAnchor, norm);
+      else toggleStaple(norm); // staple <-> unstaple
+      render();
+    };
   });
   const clr = document.getElementById("clearChecks");
   if (clr) clr.onclick = () => { clearWeekChecks(weekAnchor); render(); };
+  const copyBtn = document.getElementById("copyList");
+  if (copyBtn) copyBtn.onclick = () => shareGroceryList(weekAnchor);
   wireTabs();
+}
+
+// Build a plain-text list (shopping items only) and share or copy it.
+function shareGroceryList(anchor) {
+  const items = groceryItems(anchor).filter((it) => !it.staple);
+  if (!items.length) { toast("Nothing to share"); return; }
+  const start = parseDate(anchor), end = parseDate(addDays(anchor, 6));
+  let text = `Groceries · ${MON[start.getMonth()]} ${start.getDate()}–${MON[end.getMonth()]} ${end.getDate()}\n`;
+  GROCERY_CATS.map((c) => c.key).concat("other").forEach((key) => {
+    const inCat = items.filter((it) => it.cat.key === key);
+    if (!inCat.length) return;
+    text += `\n${inCat[0].cat.label}\n`;
+    inCat.forEach((it) => { text += `- ${it.text}${it.count > 1 ? ` (×${it.count})` : ""}\n`; });
+  });
+  if (navigator.share) {
+    navigator.share({ title: "Groceries", text }).catch(() => {});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => toast("List copied")).catch(() => toast("Couldn't copy"));
+  } else {
+    toast("Sharing not supported");
+  }
 }
 
 /* ---------- ratings view ---------- */
