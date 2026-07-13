@@ -6,6 +6,20 @@ steps below** — and give it a **1–5 star rating**. Ratings save on the devic
 when connected, commit an `ratings.json` file to this GitHub repo so the meal-plan
 generator can use them to build the next plan.
 
+## What's in the app
+- **Today / Week / Groceries / Ratings** tabs (bottom bar).
+- **Week view** — Sun–Sat at a glance, tap any meal for its recipe, ‹ › across weeks.
+- **Groceries** — a checkable Sun–Sat list from that week's dinners, grouped by aisle,
+  with add-your-own items, "always have" staples, and copy/share.
+- **Cooking mode** — open a recipe and the screen stays awake; tap ingredients/steps to
+  check them off.
+- **Ratings** — favorites / duds, cook counts, and last-cooked dates.
+- **Plan a new month (AI)** — from the Ratings tab, generate a fresh `meals.json` with the
+  Claude API weighted toward your favorites; preview, download, or make it live. Needs your
+  own Anthropic API key (stored on-device only).
+- **Durable + multi-device** — on load the app pulls `ratings.json` + `overrides.json` back
+  from the repo, so a new device or reinstall isn't blank.
+
 ## Files
 - `index.html`, `styles.css`, `app.js` — the app
 - `meals.json` — the plan data (days → dinner/lunch, with ingredients + steps)
