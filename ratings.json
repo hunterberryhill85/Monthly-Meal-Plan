@@ -1,11 +1,12 @@
 {
-  "updated": "2026-07-13T01:14:35.659Z",
+  "updated": "2026-07-13T01:35:45.054Z",
   "plan": "July Meal Plan",
   "ratings": {
     "Backyard cookout — burgers, hot dogs, grilled chicken sausage": {
       "title": "Backyard cookout — burgers, hot dogs, grilled chicken sausage",
       "type": "dinner",
-      "count": 1,
+      "rating": 4,
+      "at": "2026-07-13T01:11:07.435Z",
       "history": [
         {
           "date": "2026-07-11",
@@ -13,13 +14,13 @@
           "at": "2026-07-13T01:11:07.435Z"
         }
       ],
-      "rating": 4,
-      "at": "2026-07-13T01:11:07.435Z"
+      "count": 1
     },
     "Build-your-own bagel pizzas (movie night)": {
       "title": "Build-your-own bagel pizzas (movie night)",
       "type": "dinner",
-      "count": 1,
+      "rating": 5,
+      "at": "2026-07-13T01:11:13.183Z",
       "history": [
         {
           "date": "2026-07-10",
@@ -27,13 +28,13 @@
           "at": "2026-07-13T01:11:13.183Z"
         }
       ],
-      "rating": 5,
-      "at": "2026-07-13T01:11:13.183Z"
+      "count": 1
     },
     "Tilapia tacos with cabbage slaw + lime crema": {
       "title": "Tilapia tacos with cabbage slaw + lime crema",
       "type": "dinner",
-      "count": 1,
+      "rating": 1,
+      "at": "2026-07-13T01:11:19.117Z",
       "history": [
         {
           "date": "2026-07-09",
@@ -41,13 +42,13 @@
           "at": "2026-07-13T01:11:19.117Z"
         }
       ],
-      "rating": 1,
-      "at": "2026-07-13T01:11:19.117Z"
+      "count": 1
     },
     "Pork chops, roasted potatoes, green beans": {
       "title": "Pork chops, roasted potatoes, green beans",
       "type": "dinner",
-      "count": 1,
+      "rating": 4,
+      "at": "2026-07-13T01:11:25.044Z",
       "history": [
         {
           "date": "2026-07-08",
@@ -55,13 +56,13 @@
           "at": "2026-07-13T01:11:25.044Z"
         }
       ],
-      "rating": 4,
-      "at": "2026-07-13T01:11:25.044Z"
+      "count": 1
     },
     "Ground beef spaghetti bolognese + garlic bread": {
       "title": "Ground beef spaghetti bolognese + garlic bread",
       "type": "dinner",
-      "count": 1,
+      "rating": 5,
+      "at": "2026-07-13T01:11:29.888Z",
       "history": [
         {
           "date": "2026-07-07",
@@ -69,13 +70,13 @@
           "at": "2026-07-13T01:11:29.888Z"
         }
       ],
-      "rating": 5,
-      "at": "2026-07-13T01:11:29.888Z"
+      "count": 1
     },
     "Sheet-pan chicken fajitas": {
       "title": "Sheet-pan chicken fajitas",
       "type": "dinner",
-      "count": 1,
+      "rating": 3,
+      "at": "2026-07-13T01:11:34.198Z",
       "history": [
         {
           "date": "2026-07-06",
@@ -83,8 +84,7 @@
           "at": "2026-07-13T01:11:34.198Z"
         }
       ],
-      "rating": 3,
-      "at": "2026-07-13T01:11:34.198Z"
+      "count": 1
     }
   }
 }
