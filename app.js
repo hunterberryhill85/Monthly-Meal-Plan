@@ -503,6 +503,7 @@ function render() {
   if (view === "detail") return renderDetail();
   if (view === "week") return renderWeek();
   if (view === "groceries") return renderGroceries();
+  if (view === "ratings") return renderRatings();
   return renderDay();
 }
 
@@ -526,6 +527,7 @@ function tabBar(active) {
       ${tab("day", "Today", "🍽️")}
       ${tab("week", "Week", "🗓️")}
       ${tab("groceries", "Groceries", "🛒")}
+      ${tab("ratings", "Ratings", "⭐")}
     </nav>`;
 }
 function wireTabs() {
@@ -556,12 +558,25 @@ function wireWeekNav() {
   if (next) next.onclick = () => { if (weekAnchor < last) { weekAnchor = addDays(weekAnchor, 7); render(); } };
 }
 
-function starsMini(title) {
-  const v = ratingFor(title);
-  if (!v) return `<span class="mini-unrated">Not rated yet</span>`;
+function starsMiniVal(v) {
   let s = "";
   for (let i = 1; i <= 5; i++) s += `<span class="${i <= v ? "on" : "off"}">★</span>`;
   return `<span class="mini-stars">${s}</span>`;
+}
+function starsMini(title) {
+  const v = ratingFor(title);
+  if (!v) return `<span class="mini-unrated">Not rated yet</span>`;
+  return starsMiniVal(v);
+}
+// First place a meal title appears in the current plan, for tap-through.
+function findInPlan(title) {
+  for (let i = 0; i < PLAN.days.length; i++) {
+    for (const slot of ["dinner", "lunch"]) {
+      const m = PLAN.days[i][slot];
+      if (m && m.title === title) return { dayIndex: i, slot };
+    }
+  }
+  return null;
 }
 
 function renderDay() {
@@ -753,6 +768,86 @@ function renderGroceries() {
   wireTabs();
 }
 
+/* ---------- ratings view ---------- */
+function renderRatings() {
+  const r = getRatings();
+  const entries = Object.values(r).filter((e) => e && e.rating);
+  const total = entries.length;
+  const avg = total ? entries.reduce((s, e) => s + e.rating, 0) / total : 0;
+  const cooked = entries.reduce((s, e) => s + (e.count || 1), 0);
+
+  const row = (e) => {
+    const inPlan = findInPlan(e.title);
+    const hist = e.history || [];
+    const last = hist.length ? hist[hist.length - 1].date : null;
+    return `
+      <div class="rt-row ${inPlan ? "tappable" : ""}" ${inPlan ? `data-i="${inPlan.dayIndex}" data-slot="${inPlan.slot}"` : ""}>
+        <div class="rt-main">
+          <div class="rt-title">${esc(e.title)}</div>
+          <div class="rt-meta">${starsMiniVal(e.rating)}<span class="rt-sub">cooked ${e.count || 1}×${last ? ` · last ${shortDay(last)}` : ""}</span></div>
+        </div>
+        ${inPlan ? `<span class="chev">›</span>` : ""}
+      </div>`;
+  };
+  const sortTier = (list) => list.slice().sort((a, b) =>
+    (b.rating - a.rating) || ((b.count || 0) - (a.count || 0)) || a.title.localeCompare(b.title));
+  const tier = (label, list) => list.length
+    ? `<div class="section-head">${label} <span class="rt-count">${list.length}</span></div><div class="card">${sortTier(list).map(row).join("")}</div>`
+    : "";
+
+  const fav = entries.filter((e) => e.rating >= 4);
+  const ok = entries.filter((e) => e.rating === 3);
+  const bad = entries.filter((e) => e.rating <= 2);
+
+  // Meals in the current plan you haven't rated yet.
+  const seen = new Set(Object.keys(r));
+  const added = new Set();
+  const unrated = [];
+  PLAN.days.forEach((d, i) => {
+    ["dinner", "lunch"].forEach((slot) => {
+      const m = d[slot];
+      if (m && m.title && !seen.has(m.title) && !added.has(m.title)) {
+        added.add(m.title);
+        unrated.push(`
+          <div class="rt-row tappable" data-i="${i}" data-slot="${slot}">
+            <div class="rt-main">
+              <div class="rt-title">${esc(m.title)}</div>
+              <div class="rt-meta"><span class="mini-unrated">Not rated yet</span></div>
+            </div>
+            <span class="chev">›</span>
+          </div>`);
+      }
+    });
+  });
+
+  app.innerHTML = `
+    ${header()}
+    <div class="detail-title" style="font-size:24px;margin-bottom:16px;">Your ratings</div>
+    ${total ? `
+      <div class="rt-summary">
+        <div class="rt-tile"><div class="rt-num">${total}</div><div class="rt-lbl">rated</div></div>
+        <div class="rt-tile"><div class="rt-num">${avg.toFixed(1)}</div><div class="rt-lbl">avg ★</div></div>
+        <div class="rt-tile"><div class="rt-num">${cooked}</div><div class="rt-lbl">cooked</div></div>
+      </div>` : `<div class="note-box">No ratings yet. After you cook a meal, open it and tap the stars — your favorites and duds will collect here.</div>`}
+    ${tier("Favorites", fav)}
+    ${tier("Just okay", ok)}
+    ${tier("Not again", bad)}
+    ${unrated.length ? `<div class="section-head">Unrated in this plan <span class="rt-count">${unrated.length}</span></div><div class="card">${unrated.join("")}</div>` : ""}
+    ${tabBar("ratings")}
+  `;
+
+  document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
+  app.querySelectorAll(".rt-row.tappable").forEach((el) => {
+    el.onclick = () => {
+      detailCtx = { dayIndex: Number(el.dataset.i), slot: el.dataset.slot };
+      detailReturn = "ratings";
+      view = "detail";
+      render();
+    };
+  });
+  wireTabs();
+}
+
 function renderDetail() {
   const day = PLAN.days[detailCtx.dayIndex];
   const slot = detailCtx.slot;
@@ -792,7 +887,7 @@ function renderDetail() {
 
   app.innerHTML = `
     ${header()}
-    <button class="detail-back" id="backBtn">‹ ${detailReturn === "week" ? "Week" : DOW[d.getDay()]}</button>
+    <button class="detail-back" id="backBtn">‹ ${detailReturn === "week" ? "Week" : detailReturn === "ratings" ? "Ratings" : DOW[d.getDay()]}</button>
     <div class="detail-kicker ${slot === "dinner" ? "" : ""}" style="color:var(--${slot})">${slot === "dinner" ? "Dinner" : "Lunch"}</div>
     <div class="detail-title">${esc(meal.title)}</div>
     <div class="detail-date">${dateLine}</div>
