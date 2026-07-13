@@ -102,23 +102,56 @@ own schedule, so a change can take a few minutes (or force it by removing and
 re-adding the widget).
 
 ## Updating the plan each month
-Replace `meals.json` with the new month's data (same shape), then **bump `VERSION`
-in `sw.js`** (e.g. `meal-v1` → `meal-v2`) so devices pick up the new files instead of
-the cached ones. Commit and push; Pages redeploys automatically.
+Just commit a new `meals.json` to `main` (root of the repo). The app fetches it
+**network-first**, so devices pick up the new plan automatically — **no `sw.js`
+version bump is needed** for a plan change. (Only bump `VERSION` in `sw.js` when you
+change the app's own code: `index.html`, `styles.css`, `app.js`.) This is the path a
+meal-plan skill should use: read `ratings.json` (and optionally `overrides.json`),
+then write `meals.json`.
 
-## meals.json shape
+## `meals.json` contract
+The single source of truth for the plan. Shape:
+
 ```json
 {
-  "title": "July Meal Plan",
-  "subtitle": "July 6 – 31",
+  "title": "August Meal Plan",
+  "subtitle": "Aug 1 – 28",
   "days": [
     {
-      "date": "2026-07-06",
-      "dinner": { "title": "...", "ingredients": ["..."], "steps": ["..."] },
-      "lunch":  { "title": "..." }
+      "date": "2026-08-01",
+      "dinner": {
+        "title": "Sheet-pan chicken fajitas",
+        "ingredients": ["1.5 lb chicken", "3 bell peppers", "1 onion", "Tortillas"],
+        "steps": ["Slice everything.", "Roast at 425°F for 20 min.", "Serve in tortillas."]
+      },
+      "lunch": { "title": "Turkey & cheese sandwich" }
     }
   ]
 }
 ```
-A meal with an empty `ingredients` array (or a `note`) renders as a simple note card
-instead of a full recipe (used for leftover nights).
+
+Field rules:
+- **`title`** (string, required) — shown as the plan name. It's also the plan's identity:
+  when `title` changes, the app treats it as a new plan and **resets skips/moves and
+  grocery state** (ratings are kept — see below). Use a fresh title each month.
+- **`subtitle`** (string) — short date range shown under the header.
+- **`days`** (array, required, in chronological order) — one entry per day.
+  - **`date`** (string `YYYY-MM-DD`, local date) — days should be contiguous. On launch the
+    app opens to today's entry, or clamps to the nearest end if today is outside the range.
+  - **`dinner`** (object, required):
+    - **`title`** (string, required).
+    - **`ingredients`** (array of strings) — free text with the quantity baked in, e.g.
+      `"1.5 lb chicken"`. The **grocery list is built from dinner ingredients only**,
+      deduped and sorted into aisles by keyword. An **empty array** (or omitting it) makes
+      the day render as a simple note card (used for leftover nights).
+    - **`steps`** (array of strings) — a step containing a URL is auto-linked.
+    - **`note`** (string, optional) — shown instead of a recipe when there are no ingredients.
+  - **`lunch`** (object, required): just **`title`** (string). Lunches are display-only
+    (often "leftover …" or a simple sandwich) and don't feed the grocery list.
+
+How it interacts with the synced files:
+- **`ratings.json`** — ratings are keyed by the **exact meal title**. Reusing an identical
+  dinner title across months carries its rating/history forward, so a planner can favor
+  4–5★ meals and drop 1–2★ ones.
+- **`overrides.json`** — this device's skips/moves for the current plan (keyed to `title`);
+  they clear automatically when a new `title` loads.
