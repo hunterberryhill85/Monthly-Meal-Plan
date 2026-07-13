@@ -517,15 +517,19 @@ html, body {
 }
 .cat-icon { font-size: 16px; }
 .g-item {
-  display: flex; align-items: center; gap: 13px;
-  width: 100%; border: none; background: none; cursor: pointer;
-  text-align: left;
-  padding: 13px 0;
+  display: flex; align-items: center; gap: 8px;
   border-bottom: 1px solid var(--line);
-  font-size: 16px; color: var(--text);
 }
 .g-item:last-child { border-bottom: none; }
-.g-item:active { opacity: 0.6; }
+.g-check {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 13px;
+  border: none; background: none; cursor: pointer;
+  text-align: left;
+  padding: 13px 0;
+  font-size: 16px; color: var(--text);
+}
+.g-check:active { opacity: 0.6; }
 .g-box {
   flex: 0 0 auto;
   width: 24px; height: 24px; border-radius: 8px;
@@ -535,6 +539,7 @@ html, body {
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 .g-text { flex: 1 1 auto; line-height: 1.35; }
+.g-text.dim { color: var(--text-dim); padding: 13px 0; }
 .g-qty {
   flex: 0 0 auto;
   font-size: 12px; font-weight: 800; color: var(--accent);
@@ -543,7 +548,29 @@ html, body {
 }
 .g-item.checked .g-box { background: var(--accent); border-color: var(--accent); }
 .g-item.checked .g-text { text-decoration: line-through; color: var(--text-dim); }
-.g-clear { margin-top: 4px; }
+.g-side {
+  flex: 0 0 auto;
+  width: 34px; height: 34px;
+  border: none; background: var(--surface-2); color: var(--text-dim);
+  border-radius: 10px; font-size: 14px; cursor: pointer;
+  display: grid; place-items: center;
+}
+.g-side:active { transform: scale(0.92); }
+
+/* add-your-own + actions */
+.g-add { display: flex; gap: 8px; margin-bottom: 16px; }
+.g-add-input {
+  flex: 1 1 auto; min-width: 0;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 12px; padding: 12px 14px; font-size: 16px;
+}
+.g-add-btn {
+  flex: 0 0 auto; border: none; background: var(--accent); color: #fff;
+  font-weight: 700; font-size: 15px; padding: 0 18px; border-radius: 12px; cursor: pointer;
+}
+.g-add-btn:active { transform: scale(0.97); }
+.g-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.g-clear { margin-top: 0; }
 .grocery-empty {
   text-align: center; color: var(--text-dim);
   font-size: 16px; line-height: 1.5;
