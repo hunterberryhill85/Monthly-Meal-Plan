@@ -66,6 +66,11 @@ function getGH() {
 function saveGH(g) { localStorage.setItem(LS_GH, JSON.stringify(g)); }
 function getAnthropicKey() { try { return localStorage.getItem(LS_ANTHROPIC) || ""; } catch { return ""; } }
 function saveAnthropicKey(k) { localStorage.setItem(LS_ANTHROPIC, k); }
+// Persistent household/budget context fed into every generation prompt.
+const LS_HOUSEHOLD = "mealHousehold";
+const DEFAULT_HOUSEHOLD = "2 adults and 1 two-year-old. Monthly grocery budget about $1,300. Not big fish fans, but tilapia is okay. No allergies or dietary restrictions.";
+function getHousehold() { try { const v = localStorage.getItem(LS_HOUSEHOLD); return v == null ? DEFAULT_HOUSEHOLD : v; } catch { return DEFAULT_HOUSEHOLD; } }
+function saveHousehold(t) { localStorage.setItem(LS_HOUSEHOLD, t); }
 function ghReady() {
   const g = getGH();
   return !!(g.owner && g.repo && g.token);
@@ -1010,7 +1015,7 @@ const MEALS_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildGenPrompt(startDate, numDays, notes) {
+function buildGenPrompt(startDate, numDays, notes, household) {
   const r = getRatings();
   const entries = Object.values(r).filter((e) => e && e.rating);
   const list = (arr) => arr.length ? arr.join("; ") : "(none yet)";
@@ -1020,6 +1025,8 @@ function buildGenPrompt(startDate, numDays, notes) {
   const d0 = parseDate(startDate);
   const dowStart = DOW[d0.getDay()];
   return `You are planning ${numDays} days of family dinners, starting on a ${dowStart}.
+
+Household & budget: ${household || "(not specified)"}
 
 The family's taste so far, from their ratings:
 - Loved (bring some of these back, and lean toward this style): ${faves}
@@ -1031,14 +1038,17 @@ Extra notes from the cook: ${notes || "(none)"}
 Rules:
 - Exactly ${numDays} days, in order. Do not include dates — the app assigns them.
 - Each day has a dinner (title, ingredients with quantities, and 3–6 concise steps) and a lunch (title only).
-- Realistic, family-friendly weeknight cooking. Keep weekday dinners simpler; weekends can be more involved.
+- Size portions and ingredient quantities for the household above, and keep ingredient choices budget-conscious to fit the stated monthly grocery budget — everyday staples and affordable cuts, saving pricier proteins for occasional nights.
+- Toddler-friendly by default: keep most dinners mild and approachable for a young child (spice served on the side, not baked in); it's fine to note a simple tweak for the toddler when a dish is bold.
+- Honor the household's likes and dislikes above (e.g. limited fish — only use a fish they're okay with, and sparingly).
+- Realistic weeknight cooking: keep weekday dinners simpler; weekends can be more involved.
 - Strong variety: don't repeat a dinner, and vary proteins and cuisines across each week.
 - Lunches should be simple (sandwiches, wraps) or leftovers that reference the correct prior night's dinner.
 - Favor the loved meals and their flavors; never include a disliked meal.
 Return only the structured data.`;
 }
 
-async function generatePlan(startDate, numDays, notes, model, statusEl) {
+async function generatePlan(startDate, numDays, notes, household, model, statusEl) {
   const key = getAnthropicKey();
   if (!key) { setGenStatus(statusEl, "Add your Anthropic API key first.", "err"); return; }
   setGenStatus(statusEl, "Generating… this can take up to a minute.", "");
@@ -1055,7 +1065,7 @@ async function generatePlan(startDate, numDays, notes, model, statusEl) {
         model: model || "claude-opus-4-8",
         max_tokens: 16000,
         output_config: { format: { type: "json_schema", schema: MEALS_SCHEMA } },
-        messages: [{ role: "user", content: buildGenPrompt(startDate, numDays, notes) }],
+        messages: [{ role: "user", content: buildGenPrompt(startDate, numDays, notes, household) }],
       }),
     });
     const data = await res.json();
@@ -1178,8 +1188,13 @@ function renderGenerate() {
         <input id="g-days" type="number" min="1" max="31" value="28">
       </div>
       <div class="field">
-        <label>Notes for the chef (optional)</label>
-        <input id="g-notes" type="text" placeholder="e.g. more chicken, one fish night, quick weekdays">
+        <label>Household & budget</label>
+        <textarea id="g-household" rows="3" autocapitalize="sentences">${esc(getHousehold())}</textarea>
+        <div class="hint">Who you're feeding, your monthly grocery budget, and any likes/dislikes. Saved on this device and used every time you generate.</div>
+      </div>
+      <div class="field">
+        <label>Notes for this plan (optional)</label>
+        <input id="g-notes" type="text" placeholder="e.g. more chicken this month, extra-quick weekdays">
       </div>
       <button class="btn-primary" id="generateBtn">Generate plan</button>
       <div class="status-line" id="genStatus"></div>
@@ -1190,13 +1205,16 @@ function renderGenerate() {
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
   document.getElementById("backBtn").onclick = () => { genPlan = null; view = "ratings"; render(); };
   document.getElementById("g-key").onchange = (e) => saveAnthropicKey(e.target.value.trim());
+  document.getElementById("g-household").onchange = (e) => saveHousehold(e.target.value.trim());
 
   document.getElementById("generateBtn").onclick = () => {
     saveAnthropicKey(document.getElementById("g-key").value.trim());
+    const household = document.getElementById("g-household").value.trim();
+    saveHousehold(household);
     const start = document.getElementById("g-start").value || defaultStart;
     const numDays = Math.max(1, Math.min(31, Number(document.getElementById("g-days").value) || 28));
     const notes = document.getElementById("g-notes").value.trim();
-    generatePlan(start, numDays, notes, "claude-opus-4-8", document.getElementById("genStatus"));
+    generatePlan(start, numDays, notes, household, "claude-opus-4-8", document.getElementById("genStatus"));
   };
 
   const makeLive = document.getElementById("makeLiveBtn");
