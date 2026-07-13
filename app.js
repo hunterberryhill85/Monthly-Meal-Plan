@@ -5,9 +5,6 @@
 const app = document.getElementById("app");
 const LS_RATINGS = "mealRatings";
 const LS_GH = "mealGitHub";
-const LS_ANTHROPIC = "mealAnthropic";
-
-let genPlan = null;     // last AI-generated plan awaiting preview/apply
 
 let PLAN = null;        // loaded meals.json
 let dayIndex = 0;       // which day is showing
@@ -64,13 +61,6 @@ function getGH() {
   catch { return {}; }
 }
 function saveGH(g) { localStorage.setItem(LS_GH, JSON.stringify(g)); }
-function getAnthropicKey() { try { return localStorage.getItem(LS_ANTHROPIC) || ""; } catch { return ""; } }
-function saveAnthropicKey(k) { localStorage.setItem(LS_ANTHROPIC, k); }
-// Persistent household/budget context fed into every generation prompt.
-const LS_HOUSEHOLD = "mealHousehold";
-const DEFAULT_HOUSEHOLD = "2 adults and 1 two-year-old. Monthly grocery budget about $1,300. Not big fish fans, but tilapia is okay. No allergies or dietary restrictions.";
-function getHousehold() { try { const v = localStorage.getItem(LS_HOUSEHOLD); return v == null ? DEFAULT_HOUSEHOLD : v; } catch { return DEFAULT_HOUSEHOLD; } }
-function saveHousehold(t) { localStorage.setItem(LS_HOUSEHOLD, t); }
 function ghReady() {
   const g = getGH();
   return !!(g.owner && g.repo && g.token);
@@ -561,7 +551,6 @@ function render() {
   if (view === "week") return renderWeek();
   if (view === "groceries") return renderGroceries();
   if (view === "ratings") return renderRatings();
-  if (view === "generate") return renderGenerate();
   return renderDay();
 }
 
@@ -950,7 +939,6 @@ function renderRatings() {
   app.innerHTML = `
     ${header()}
     <div class="detail-title" style="font-size:24px;margin-bottom:16px;">Your ratings</div>
-    <button class="btn-primary gen-cta" id="genBtn">✨ Plan a new month from your ratings</button>
     ${total ? `
       <div class="rt-summary">
         <div class="rt-tile"><div class="rt-num">${total}</div><div class="rt-lbl">rated</div></div>
@@ -965,7 +953,6 @@ function renderRatings() {
   `;
 
   document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
-  document.getElementById("genBtn").onclick = () => { view = "generate"; render(); };
   app.querySelectorAll(".rt-row.tappable").forEach((el) => {
     el.onclick = () => {
       detailCtx = { dayIndex: Number(el.dataset.i), slot: el.dataset.slot };
@@ -975,258 +962,6 @@ function renderRatings() {
     };
   });
   wireTabs();
-}
-
-/* ---------- AI plan generator ----------
-   Calls the Anthropic Messages API directly from the browser (the user supplies
-   their own key, stored on-device) and forces a schema-valid meals.json via
-   output_config.format. Dates are assigned in code so they're always correct. */
-const MEALS_SCHEMA = {
-  type: "object",
-  properties: {
-    days: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          dinner: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              ingredients: { type: "array", items: { type: "string" } },
-              steps: { type: "array", items: { type: "string" } },
-            },
-            required: ["title", "ingredients", "steps"],
-            additionalProperties: false,
-          },
-          lunch: {
-            type: "object",
-            properties: { title: { type: "string" } },
-            required: ["title"],
-            additionalProperties: false,
-          },
-        },
-        required: ["dinner", "lunch"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["days"],
-  additionalProperties: false,
-};
-
-function buildGenPrompt(startDate, numDays, notes, household) {
-  const r = getRatings();
-  const entries = Object.values(r).filter((e) => e && e.rating);
-  const list = (arr) => arr.length ? arr.join("; ") : "(none yet)";
-  const faves = list(entries.filter((e) => e.rating >= 4).map((e) => `${e.title} (${e.rating}★, cooked ${e.count || 1}×)`));
-  const duds = list(entries.filter((e) => e.rating <= 2).map((e) => `${e.title} (${e.rating}★)`));
-  const okay = list(entries.filter((e) => e.rating === 3).map((e) => e.title));
-  const d0 = parseDate(startDate);
-  const dowStart = DOW[d0.getDay()];
-  return `You are planning ${numDays} days of family dinners, starting on a ${dowStart}.
-
-Household & budget: ${household || "(not specified)"}
-
-The family's taste so far, from their ratings:
-- Loved (bring some of these back, and lean toward this style): ${faves}
-- Just okay: ${okay}
-- Disliked (do NOT include these; avoid similar): ${duds}
-
-Extra notes from the cook: ${notes || "(none)"}
-
-Rules:
-- Exactly ${numDays} days, in order. Do not include dates — the app assigns them.
-- Each day has a dinner (title, ingredients with quantities, and 3–6 concise steps) and a lunch (title only).
-- Size portions and ingredient quantities for the household above, and keep ingredient choices budget-conscious to fit the stated monthly grocery budget — everyday staples and affordable cuts, saving pricier proteins for occasional nights.
-- Toddler-friendly by default: keep most dinners mild and approachable for a young child (spice served on the side, not baked in); it's fine to note a simple tweak for the toddler when a dish is bold.
-- Honor the household's likes and dislikes above (e.g. limited fish — only use a fish they're okay with, and sparingly).
-- Realistic weeknight cooking: keep weekday dinners simpler; weekends can be more involved.
-- Strong variety: don't repeat a dinner, and vary proteins and cuisines across each week.
-- Lunches should be simple (sandwiches, wraps) or leftovers that reference the correct prior night's dinner.
-- Favor the loved meals and their flavors; never include a disliked meal.
-Return only the structured data.`;
-}
-
-async function generatePlan(startDate, numDays, notes, household, model, statusEl) {
-  const key = getAnthropicKey();
-  if (!key) { setGenStatus(statusEl, "Add your Anthropic API key first.", "err"); return; }
-  setGenStatus(statusEl, "Generating… this can take up to a minute.", "");
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": key,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model: model || "claude-opus-4-8",
-        max_tokens: 16000,
-        output_config: { format: { type: "json_schema", schema: MEALS_SCHEMA } },
-        messages: [{ role: "user", content: buildGenPrompt(startDate, numDays, notes, household) }],
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error((data.error && data.error.message) || `HTTP ${res.status}`);
-    if (data.stop_reason === "refusal") throw new Error("The request was declined.");
-    const textBlock = (data.content || []).find((b) => b.type === "text");
-    if (!textBlock) throw new Error("No content returned.");
-    const parsed = JSON.parse(textBlock.text);
-    const days = (parsed.days || []).slice(0, numDays).map((day, i) => ({
-      date: addDays(startDate, i),
-      dinner: day.dinner,
-      lunch: day.lunch,
-    }));
-    if (!days.length) throw new Error("The plan came back empty.");
-    const s = parseDate(days[0].date), e = parseDate(days[days.length - 1].date);
-    genPlan = {
-      title: `${MON[s.getMonth()]} ${s.getFullYear()} Meal Plan`,
-      subtitle: `${MON[s.getMonth()]} ${s.getDate()} – ${MON[e.getMonth()]} ${e.getDate()}`,
-      days,
-    };
-    if (data.stop_reason === "max_tokens") {
-      setGenStatus(statusEl, `Generated ${days.length} days (hit the length limit — try fewer days for full recipes).`, "err");
-    } else {
-      setGenStatus(statusEl, `Generated ${days.length} days ✓`, "ok");
-    }
-    render();
-  } catch (err) {
-    setGenStatus(statusEl, "Failed: " + err.message, "err");
-  }
-}
-
-function setGenStatus(el, msg, cls) {
-  if (el) { el.textContent = msg; el.className = "status-line " + (cls || ""); }
-}
-
-async function commitMealsJson(plan, statusEl) {
-  if (!ghReady()) { setGenStatus(statusEl, "Turn on GitHub sync in ⚙ to publish the plan.", "err"); return; }
-  const g = getGH();
-  const branch = g.branch || "main";
-  const api = `https://api.github.com/repos/${g.owner}/${g.repo}/contents/meals.json`;
-  const headers = {
-    "Authorization": `Bearer ${g.token}`,
-    "Accept": "application/vnd.github+json",
-    "Content-Type": "application/json",
-  };
-  const content = btoa(unescape(encodeURIComponent(JSON.stringify(plan, null, 2))));
-  try {
-    setGenStatus(statusEl, "Publishing to GitHub…", "");
-    let sha;
-    const getRes = await fetch(`${api}?ref=${encodeURIComponent(branch)}`, { headers });
-    if (getRes.ok) sha = (await getRes.json()).sha;
-    else if (getRes.status !== 404) throw new Error(`read ${getRes.status}`);
-    const putRes = await fetch(api, {
-      method: "PUT",
-      headers,
-      body: JSON.stringify({ message: `New plan: ${plan.title}`, content, branch, ...(sha ? { sha } : {}) }),
-    });
-    if (!putRes.ok) throw new Error(`${putRes.status} ${(await putRes.text()).slice(0, 120)}`);
-    // Adopt it as the live plan on this device immediately.
-    PLAN = plan;
-    dayIndex = pickStartDay();
-    let anchor = sundayOf(todayStr());
-    if (anchor < planFirstSunday()) anchor = planFirstSunday();
-    if (anchor > planLastSunday()) anchor = planLastSunday();
-    weekAnchor = anchor;
-    genPlan = null;
-    view = "day";
-    render();
-    toast("New plan is live");
-  } catch (err) {
-    setGenStatus(statusEl, "Publish failed: " + err.message, "err");
-  }
-}
-
-function downloadPlan(plan) {
-  const blob = new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "meals.json";
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-
-function renderGenerate() {
-  const key = getAnthropicKey();
-  const defaultStart = PLAN ? addDays(PLAN.days[PLAN.days.length - 1].date, 1) : todayStr();
-
-  const preview = genPlan ? `
-    <div class="section-head">Preview <span class="rt-count">${genPlan.days.length} days</span></div>
-    <div class="gen-sub">${esc(genPlan.title)} · ${esc(genPlan.subtitle)}</div>
-    <div class="card">
-      ${genPlan.days.map((d) => {
-        const dd = parseDate(d.date);
-        return `<div class="gen-row"><span class="gen-day">${DOW[dd.getDay()].slice(0, 3)} ${MON[dd.getMonth()]} ${dd.getDate()}</span><span class="gen-meal">${esc(d.dinner.title)}</span></div>`;
-      }).join("")}
-    </div>
-    <button class="btn-primary" id="makeLiveBtn">Make this the live plan</button>
-    <button class="btn-ghost" id="downloadBtn">Download meals.json</button>
-    <button class="btn-ghost" id="discardBtn">Discard</button>
-    <div class="status-line" id="applyStatus"></div>
-  ` : "";
-
-  app.innerHTML = `
-    ${header()}
-    <button class="detail-back" id="backBtn">‹ Ratings</button>
-    <div class="detail-title" style="font-size:24px;margin-bottom:6px;">Plan a new month</div>
-    <div class="explain">Generates a fresh plan with the Claude API, weighted toward your favorites and away from your duds. Your API key is stored only on this device.</div>
-    <div class="settings-wrap">
-      <div class="field">
-        <label>Anthropic API key</label>
-        <input id="g-key" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(key)}" placeholder="sk-ant-…">
-        <div class="hint">From console.anthropic.com. Stored on this device only, never committed.</div>
-      </div>
-      <div class="field">
-        <label>Start date</label>
-        <input id="g-start" type="date" value="${esc(defaultStart)}">
-      </div>
-      <div class="field">
-        <label>How many days</label>
-        <input id="g-days" type="number" min="1" max="31" value="28">
-      </div>
-      <div class="field">
-        <label>Household & budget</label>
-        <textarea id="g-household" rows="3" autocapitalize="sentences">${esc(getHousehold())}</textarea>
-        <div class="hint">Who you're feeding, your monthly grocery budget, and any likes/dislikes. Saved on this device and used every time you generate.</div>
-      </div>
-      <div class="field">
-        <label>Notes for this plan (optional)</label>
-        <input id="g-notes" type="text" placeholder="e.g. more chicken this month, extra-quick weekdays">
-      </div>
-      <button class="btn-primary" id="generateBtn">Generate plan</button>
-      <div class="status-line" id="genStatus"></div>
-    </div>
-    ${preview}
-  `;
-
-  document.getElementById("gearBtn").onclick = () => { view = "settings"; render(); };
-  document.getElementById("backBtn").onclick = () => { genPlan = null; view = "ratings"; render(); };
-  document.getElementById("g-key").onchange = (e) => saveAnthropicKey(e.target.value.trim());
-  document.getElementById("g-household").onchange = (e) => saveHousehold(e.target.value.trim());
-
-  document.getElementById("generateBtn").onclick = () => {
-    saveAnthropicKey(document.getElementById("g-key").value.trim());
-    const household = document.getElementById("g-household").value.trim();
-    saveHousehold(household);
-    const start = document.getElementById("g-start").value || defaultStart;
-    const numDays = Math.max(1, Math.min(31, Number(document.getElementById("g-days").value) || 28));
-    const notes = document.getElementById("g-notes").value.trim();
-    generatePlan(start, numDays, notes, household, "claude-opus-4-8", document.getElementById("genStatus"));
-  };
-
-  const makeLive = document.getElementById("makeLiveBtn");
-  if (makeLive) makeLive.onclick = () => {
-    if (confirm("Replace your live plan with this generated one? Your ratings are kept.")) {
-      commitMealsJson(genPlan, document.getElementById("applyStatus"));
-    }
-  };
-  const dl = document.getElementById("downloadBtn");
-  if (dl) dl.onclick = () => downloadPlan(genPlan);
-  const discard = document.getElementById("discardBtn");
-  if (discard) discard.onclick = () => { genPlan = null; render(); };
 }
 
 function renderDetail() {

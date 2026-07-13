@@ -258,8 +258,7 @@ html, body {
 .settings-wrap { }
 .field { margin-bottom: 18px; }
 .field label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 7px; }
-.field input,
-.field textarea {
+.field input {
   width: 100%;
   border: 1px solid var(--line);
   background: var(--surface);
@@ -267,11 +266,6 @@ html, body {
   border-radius: 12px;
   padding: 13px 14px;
   font-size: 16px;
-}
-.field textarea {
-  font-family: inherit;
-  line-height: 1.4;
-  resize: vertical;
 }
 .field .hint { font-size: 12px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; }
 .btn-primary {
@@ -612,15 +606,3 @@ html, body {
 .rt-title { font-size: 16px; font-weight: 600; line-height: 1.3; }
 .rt-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 5px; }
 .rt-sub { font-size: 12px; color: var(--text-dim); }
-
-/* ---------- generator ---------- */
-.gen-cta { margin-bottom: 20px; }
-.gen-sub { font-size: 13px; color: var(--text-dim); margin: -6px 0 12px; }
-.gen-row {
-  display: flex; align-items: baseline; gap: 12px;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--line);
-}
-.gen-row:last-child { border-bottom: none; }
-.gen-day { flex: 0 0 74px; font-size: 12px; font-weight: 800; color: var(--accent); text-transform: uppercase; letter-spacing: 0.4px; }
-.gen-meal { flex: 1 1 auto; font-size: 15px; line-height: 1.3; }

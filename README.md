@@ -14,11 +14,12 @@ generator can use them to build the next plan.
 - **Cooking mode** — open a recipe and the screen stays awake; tap ingredients/steps to
   check them off.
 - **Ratings** — favorites / duds, cook counts, and last-cooked dates.
-- **Plan a new month (AI)** — from the Ratings tab, generate a fresh `meals.json` with the
-  Claude API weighted toward your favorites; preview, download, or make it live. Needs your
-  own Anthropic API key (stored on-device only).
 - **Durable + multi-device** — on load the app pulls `ratings.json` + `overrides.json` back
   from the repo, so a new device or reinstall isn't blank.
+
+New months are produced outside the app (e.g. a meal-plan skill) by writing `meals.json`
+to this repo — the app loads it network-first and picks it up automatically. See
+"Updating the plan each month" below.
 
 ## Files
 - `index.html`, `styles.css`, `app.js` — the app
